@@ -4,13 +4,12 @@ async function main() {
     console.log("Deploying contracts with the account:", deployer.address); 
  
     // const Token = await ethers.getContractFactory("NAME OF CONTRACT TO DEPLOY HERE"); 
-    const Token = await ethers.getContractFactory("SHTokenFactory");
- 
-    const token = await Token.deploy();
+    const SHTokenFactory = await ethers.getContractFactory("SHTokenFactory");
+    const contract = await SHTokenFactory.deploy();
     // await token.waitForDeployment();
     
-    const contractAddress = await token.getAddress(); 
-    console.log("Token address:", contractAddress); 
+    const contractAddress = await contract.getAddress(); 
+    console.log("Contract address:", contractAddress); 
 } 
  
 main() 
