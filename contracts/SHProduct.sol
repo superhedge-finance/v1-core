@@ -34,11 +34,11 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     string public underlying;
 
     address public manager;
-    address public shNFT;
+    // address public shNFT;
     address public shFactory;
     address public tokenAddress;
 
-    address public qredoWallet;
+    address public exWallet;
 
     uint256 public maxCapacity;
     uint256 public currentCapacity;
@@ -197,7 +197,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         string memory _underlying,
         IERC20Upgradeable _currency,
         address _manager,
-        address _qredoWallet,
+        address _exWallet,
         uint256 _maxCapacity,
         DataTypes.IssuanceCycle memory _issuanceCycle,
         address _router,
@@ -212,7 +212,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         underlying = _underlying;
 
         manager = _manager;
-        qredoWallet = _qredoWallet;
+        exWallet = _exWallet;
         maxCapacity = _maxCapacity;
         tokenAddress = _tokenAddress;
         currency = _currency;
@@ -576,7 +576,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         uint256 optionAmount;
         if (optionRate > 0) {
             optionAmount = currentCapacity * optionRate / 100;
-            currency.transfer(qredoWallet, optionAmount);
+            currency.transfer(exWallet, optionAmount);
         }
 
         uint256 yieldAmount = currentCapacity - optionAmount;
@@ -589,7 +589,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     
         isDistributed = true;
         
-        emit DistributeFunds(qredoWallet, optionRate, _router, _yieldRate);
+        emit DistributeFunds(exWallet, optionRate, _router, _yieldRate);
     }
 
     /**
@@ -615,7 +615,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
      * @dev Transfers option profit from a qredo wallet, called by an owner
      */
     function redeemOptionPayout(uint256 _optionProfit) external onlyMature {
-        require(msg.sender == qredoWallet, "Not a qredo wallet");
+        require(msg.sender == exWallet, "Not exWallet address");
         currency.safeTransferFrom(msg.sender, address(this), _optionProfit);
         optionProfit = _optionProfit;
 
