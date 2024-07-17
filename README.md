@@ -22,5 +22,5 @@ npx hardhat run scripts/deploy.js --network arb
  i)     SHTokenFactory
  ii)    SHFactory
 
-6. Verify each of the deployed contracts by running:
+5. Verify each of the deployed contracts by running:
 npx hardhat verify --contract "contracts/[CONTRACT.sol]:CONTRACT" --network arbitrum 0x_CONTRACT_ADDRESS
