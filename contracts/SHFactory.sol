@@ -21,7 +21,7 @@ contract SHFactory is ISHFactory, OwnableUpgradeable {
    mapping(string => address) public getProduct;
    /// @notice Boolean check if an address is a product
    mapping(address => bool) public isProduct;
-   address public tokenFactory = 0xdEc4580DDaDD748D8957EEBF61a9C99af40923D0;
+   address public tokenFactory;
    /// @notice Event emitted when new product is created
    event ProductCreated(
        address indexed product,
@@ -38,8 +38,9 @@ contract SHFactory is ISHFactory, OwnableUpgradeable {
    /**
     * @dev Initializes the contract setting the deployer as the initial owner.
     */
-   function initialize() public initializer {
+   function initialize(address _tokenFactory) public initializer {
        __Ownable_init();
+       tokenFactory = _tokenFactory;
    }
 
    /**

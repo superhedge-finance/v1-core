@@ -10,9 +10,7 @@ import "@pendle/core-v2/contracts/interfaces/IPMarket.sol";
 import "./StructGen.sol";
 import "./interfaces/ISHProduct.sol";
 import "./interfaces/ISHFactory.sol";
-import "./interfaces/ISHNFT.sol";
 import "./interfaces/IERC20Token.sol";
-import "./interfaces/lendle/IPool.sol";
 import "./libraries/DataTypes.sol";
 import "./libraries/Array.sol";
 
@@ -390,18 +388,6 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     }
 
     /**
-     * @dev Updates token URI
-     */
-    function updateURI(
-        string memory _newUri
-    ) public LockedOrMature onlyManager {
-        ISHNFT(shNFT).setTokenURI(currentTokenId, _newUri);
-        issuanceCycle.uri = _newUri;
-
-        emit UpdateURI(currentTokenId, _newUri);
-    }
-
-    /**
      * @dev Updates TR1 & TR2 (total returns %)
      */
     function updateTRs(
@@ -447,8 +433,6 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         updateTRs(_tr1, _tr2);
 
         updateAPY(_apy);
-
-        updateURI(_uri);
 
         emit UpdateParameters(
             _coupon, 
@@ -529,36 +513,9 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
      */
     function withdrawPrincipal() external nonReentrant onlyAccepted {
         uint256 currentToken = IERC20Token(tokenAddress).checkBalanceOf(msg.sender);
-
-        // uint256 prevSupply = ISHNFT(shNFT).balanceOf(msg.sender, prevTokenId);
-        // uint256 currentSupply = ISHNFT(shNFT).balanceOf(msg.sender, currentTokenId);
-
-        // uint256 totalSupply = prevSupply + currentSupply;
-
-        // require(totalSupply > 0, "No principal");
-        // uint256 principal = _convertTokenToCurrency(totalSupply);
-        // require(totalBalance() >= principal, "Insufficient balance");
-
-
         IERC20(tokenAddress).transferFrom(msg.sender, deadAddress, currentToken);
-
-        // IERC20Token(tokenAddress).burn(msg.sender,currentToken);
-        
         currency.safeTransfer(msg.sender, currentToken);
-        // ISHNFT(shNFT).burn(msg.sender, prevTokenId, prevSupply);
-        // ISHNFT(shNFT).burn(msg.sender, currentTokenId, currentSupply);
-
-        // currentCapacity -= principal;
         currentCapacity -= currentToken;
-
-        // emit WithdrawPrincipal(
-        //     msg.sender, 
-        //     principal, 
-        //     prevTokenId, 
-        //     prevSupply, 
-        //     currentTokenId, 
-        //     currentSupply
-        // );
 
         emit WithdrawPrincipal(
             msg.sender, 
@@ -663,17 +620,6 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         optionProfit = _optionProfit;
 
         emit RedeemOptionPayout(msg.sender, _optionProfit);
-    }
-
-    /**
-     * @notice Returns the user's principal balance
-     * Before auto-rolling or fund lock, users can have both tokens so total supply is the sum of 
-     * previous supply and current supply
-     */
-    function principalBalance(address _user) public view returns (uint256) {
-        uint256 prevSupply = ISHNFT(shNFT).balanceOf(_user, prevTokenId);
-        uint256 tokenSupply = ISHNFT(shNFT).balanceOf(_user, currentTokenId);
-        return _convertTokenToCurrency(prevSupply + tokenSupply);
     }
 
     /**
