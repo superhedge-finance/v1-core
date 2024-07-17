@@ -1,14 +1,26 @@
-# Sample Hardhat Project
+# SuperHedge
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a Hardhat Ignition module that deploys that contract.
+Principal-protected Defi Structured Products
 
-Try running some of the following tasks:
+## Contract Deployment
 
-```shell
-npx hardhat help
-npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat node
-npx hardhat ignition deploy ./ignition/modules/Lock.js
-```
-# v1-core
+1. Clone repo to localhost
+
+2. Install Packages:
+npm install
+
+3. Create secret.json file with environment variables:
+{
+    "PRIVATE_KEY" : "YOUR_PRIVATE_KEY",
+    "API_KEY_ARBISCAN": "YOUR_ARBISCAN_API_KEY"
+}
+
+4. Deploy contracts below:
+Edit the file scripts/deploy.js, and run
+npx hardhat run scripts/deploy.js --network arb 
+
+ i)     SHTokenFactory
+ ii)    SHFactory
+
+6. Verify each of the deployed contracts by running:
+npx hardhat verify --contract "contracts/[CONTRACT.sol]:CONTRACT" --network arbitrum 0x_CONTRACT_ADDRESS
