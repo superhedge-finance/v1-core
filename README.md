@@ -6,11 +6,10 @@ Principal-protected Defi Structured Products
 
 1. Clone repo to localhost
 
-2. Install Hardhat
-npm install --save-dev hardhat
-
 2. Install project packages:
 npm install
+
+This will include Hardhat installation, of the version specified in package.json
 
 3. Create secret.json file with environment variables:
 {
