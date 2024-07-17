@@ -2,6 +2,8 @@
 
 Principal-protected Defi Structured Products
 
+TESTING REPO PERMISSIONS
+
 ## Contract Deployment
 
 1. Clone repo to localhost
