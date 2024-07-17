@@ -6,7 +6,10 @@ Principal-protected Defi Structured Products
 
 1. Clone repo to localhost
 
-2. Install Packages:
+2. Install Hardhat
+npm install --save-dev hardhat
+
+2. Install project packages:
 npm install
 
 3. Create secret.json file with environment variables:
@@ -17,7 +20,7 @@ npm install
 
 4. Deploy contracts below:
 Edit the file scripts/deploy.js, and run
-npx hardhat run scripts/deploy.js --network arb 
+npx hardhat run scripts/deploy.js --network arbitrum
 
  i)     SHTokenFactory
  ii)    SHFactory

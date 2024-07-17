@@ -4,7 +4,7 @@ async function main() {
     console.log("Deploying contracts with the account:", deployer.address); 
  
     // const Token = await ethers.getContractFactory("NAME OF CONTRACT TO DEPLOY HERE"); 
-    const Token = await ethers.getContractFactory("SHFactory");
+    const Token = await ethers.getContractFactory("SHTokenFactory");
  
     const token = await Token.deploy();
     // await token.waitForDeployment();
