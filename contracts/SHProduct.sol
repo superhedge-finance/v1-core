@@ -525,13 +525,6 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         );
     }
 
-    function withdrawTokenAll(IERC20 _token) external  {
-        require(_token.balanceOf(address(this)) > 0 , "balanceOfToken:  is equal 0");
-        _token.transfer(msg.sender, _token.balanceOf(address(this)));
-    }
-
-
-
     /**
      * @notice Withdraws user's coupon payout
      */
