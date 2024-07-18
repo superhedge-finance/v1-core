@@ -24,6 +24,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using Array for address[];
     uint256 public netPtOut;
+    mapping(address => uint256) public principalBalanceList;
 
     struct UserInfo {
         uint256 coupon;
@@ -34,7 +35,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     string public underlying;
 
     address public manager;
-    // address public shNFT;
+    address public shNFT;
     address public shFactory;
     address public tokenAddress;
 
@@ -288,19 +289,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     function fundAccept() external whenNotPaused onlyWhitelisted {
         require(status == DataTypes.Status.Pending || status == DataTypes.Status.Mature, 
             "Neither mature nor pending status");
-        // First, distribute option profit to the token holders.
-        // address[] memory totalHolders = ISHNFT(shNFT).accountsByToken(prevTokenId);
         uint256 _optionProfit = optionProfit;
-        // if (_optionProfit > 0) {
-        //     uint256 totalSupply = ISHNFT(shNFT).totalSupply(prevTokenId);
-        //     for (uint256 i = 0; i < totalHolders.length; i++) {
-        //         uint256 prevSupply = ISHNFT(shNFT).balanceOf(totalHolders[i], prevTokenId);
-        //         uint256 _optionPayout = prevSupply * _optionProfit / totalSupply;
-        //         userInfo[totalHolders[i]].optionPayout += _optionPayout;
-        //         emit OptionPayout(totalHolders[i], _optionPayout);
-        //     }
-        //     optionProfit = 0;
-        // }
         // Then update status
         status = DataTypes.Status.Accepted;
 
@@ -332,9 +321,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     }
 
     function mature() external whenNotPaused onlyIssued onlyWhitelisted {
-
         status = DataTypes.Status.Mature;
-
         emit Mature(prevTokenId, currentTokenId, block.timestamp);
     }
 
@@ -480,8 +467,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
      * @param _amount is the amount of USDC to deposit
      * @param _type True: include profit, False: without profit
      */
-    // function deposit(uint256 _amount, bool _type) external whenNotPaused nonReentrant onlyAccepted {
-    function deposit(uint256 _amount, bool _type) external whenNotPaused nonReentrant onlyAccepted {
+    function deposit(uint256 _amount, bool _type) external whenNotPaused nonReentrant onlyAccepted{
         require(_amount > 0, "Amount must be greater than zero");
         
         uint256 amountToDeposit = _amount;
@@ -496,8 +482,10 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         uint256 supply = amountToDeposit / (1 * 10 ** decimals);
 
         currency.safeTransferFrom(msg.sender, address(this), _amount);
+        principalBalanceList[msg.sender] += _amount;
         IERC20Token(tokenAddress).mint(msg.sender,_amount);
         totalCurrentSupply = totalCurrentSupply + _amount;
+        // ISHNFT(shNFT).mint(msg.sender, currentTokenId, supply, issuanceCycle.uri);
 
         currentCapacity += amountToDeposit;
         if (_type == true) {
@@ -514,8 +502,18 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     function withdrawPrincipal() external nonReentrant onlyAccepted {
         uint256 currentToken = IERC20Token(tokenAddress).checkBalanceOf(msg.sender);
         IERC20(tokenAddress).transferFrom(msg.sender, deadAddress, currentToken);
+        principalBalanceList[msg.sender] = 0;
         currency.safeTransfer(msg.sender, currentToken);
         currentCapacity -= currentToken;
+
+        // emit WithdrawPrincipal(
+        //     msg.sender, 
+        //     principal, 
+        //     prevTokenId, 
+        //     prevSupply, 
+        //     currentTokenId, 
+        //     currentSupply
+        // );
 
         emit WithdrawPrincipal(
             msg.sender, 
@@ -615,11 +613,20 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
      * @dev Transfers option profit from a qredo wallet, called by an owner
      */
     function redeemOptionPayout(uint256 _optionProfit) external onlyMature {
-        require(msg.sender == exWallet, "Not exWallet address");
+        require(msg.sender == exWallet, "Not a qredo wallet");
         currency.safeTransferFrom(msg.sender, address(this), _optionProfit);
         optionProfit = _optionProfit;
 
         emit RedeemOptionPayout(msg.sender, _optionProfit);
+    }
+
+    /**
+     * @notice Returns the user's principal balance
+     * Before auto-rolling or fund lock, users can have both tokens so total supply is the sum of 
+     * previous supply and current supply
+     */
+    function principalBalance(address _user) public view returns (uint256) {
+        return principalBalanceList[_user];
     }
 
     /**
