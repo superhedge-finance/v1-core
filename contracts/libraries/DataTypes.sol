@@ -14,7 +14,9 @@ library DataTypes {
         uint256 issuanceDate;
         uint256 maturityDate;
         string apy;
-        string uri;
+        uint256 underlyingSpotRef;
+        uint256 optionMinOrderSize;
+        string subAccountId;
     }
 
     /// @notice Enum representing product status
