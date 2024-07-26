@@ -94,12 +94,12 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     event DistributeFunds(
         address indexed _qredoDeribit,
         uint256 _optionRate,
-        address indexed _lendleLPool,
+        address indexed _pendleRouter,
         uint256 _yieldRate
     );
     
     event RedeemYield(
-        address _lendleLPool,
+        address _pendleRouter,
         uint256 _amount
     );
 
@@ -113,7 +113,8 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         uint256 _tr1,
         uint256 _tr2,
         string _apy,
-        string _uri
+        uint256 _underlyingSpotRef,
+        uint256 _optionMinOrderSize
     );
 
     // event FundAccept(
@@ -170,14 +171,21 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         uint256 _strikePrice4
     );
 
-    event UpdateURI(
-        uint256 _currentTokenId,
-        string _uri
+    event UpdateOptionMinOrderSize(
+        uint256 _optionMinOrderSize
+    );
+
+    event UpdateUnderlyingSpotRef(
+        uint256 _underlyingSpotRef
     );
 
     event UpdateTRs(
         uint256 _newTr1,
         uint256 _newTr2
+    );
+
+    event UpdateSubAccountId(
+        string _subAccountId
     );
 
     event UpdateAPY(
@@ -398,6 +406,24 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         emit UpdateAPY(_apy);
     }
 
+    function updateOptionMinOrderSize(uint256 _optionMinOrderSize) public LockedOrMature onlyManager {
+        issuanceCycle.optionMinOrderSize = _optionMinOrderSize;
+
+        emit UpdateOptionMinOrderSize(_optionMinOrderSize);
+    }
+
+    function updateUnderlyingSpotRef(uint256 _underlyingSpotRef) public LockedOrMature onlyManager {
+        issuanceCycle.underlyingSpotRef = _underlyingSpotRef;
+
+        emit UpdateUnderlyingSpotRef(_underlyingSpotRef);
+    }
+
+    function updateSubAccountId(string memory _subAccountId) public LockedOrMature onlyManager {
+        issuanceCycle.subAccountId = _subAccountId;
+
+        emit UpdateSubAccountId(_subAccountId);
+    }
+
     /**
      * @dev Update all parameters for next issuance cycle, called by only manager
      */
@@ -410,7 +436,10 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         uint256 _tr1,
         uint256 _tr2,
         string memory _apy,
-        string memory _uri
+        uint256 _underlyingSpotRef,
+        uint256 _optionMinOrderSize,
+        string memory _subAccountId
+        
     ) external LockedOrMature onlyManager {
 
         updateCoupon(_coupon);
@@ -421,6 +450,12 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
 
         updateAPY(_apy);
 
+        updateOptionMinOrderSize(_optionMinOrderSize);
+
+        updateUnderlyingSpotRef(_underlyingSpotRef);
+
+        updateSubAccountId(_subAccountId);
+
         emit UpdateParameters(
             _coupon, 
             _strikePrice1, 
@@ -430,7 +465,8 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
             _tr1,
             _tr2,
             _apy,
-            _uri
+            _underlyingSpotRef,
+            _optionMinOrderSize
         );
     }
     function updateTimes(
@@ -525,13 +561,6 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         );
     }
 
-    function withdrawTokenAll(IERC20 _token) external  {
-        require(_token.balanceOf(address(this)) > 0 , "balanceOfToken:  is equal 0");
-        _token.transfer(msg.sender, _token.balanceOf(address(this)));
-    }
-
-
-
     /**
      * @notice Withdraws user's coupon payout
      */
@@ -595,7 +624,6 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
      */
 
     function redeemYield(
-        address _router
     ) external onlyManager onlyMature {
         require(isDistributed, "Not distributed");
         // Withdraw your asset based on a aToken amount
@@ -606,7 +634,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         netPtOut = 0;
         isDistributed = false;
 
-        emit RedeemYield(_router, netTokenOut);
+        emit RedeemYield(address(router), netTokenOut);
     }
 
     /**
