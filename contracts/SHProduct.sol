@@ -31,13 +31,18 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         uint256 optionPayout;
     }
 
+    struct UserOptionPosition {
+        address userAddress;
+        uint256 value;
+    }
+
     string public name;
     string public underlying;
 
     address public manager;
-    address public shNFT;
     address public shFactory;
     address public tokenAddress;
+    address public admin;
 
     address public exWallet;
 
@@ -45,6 +50,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     uint256 public currentCapacity;
     uint256 public optionProfit;
     uint256 public totalCurrentSupply;
+    uint256 public totalOptionPosition;
     
     uint256 public currentTokenId;
     uint256 public prevTokenId;
@@ -53,6 +59,8 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     DataTypes.IssuanceCycle public issuanceCycle;
     
     mapping(address => UserInfo) public userInfo;
+    UserOptionPosition[] public UserOptionPositions;
+    
 
     IERC20Upgradeable public currency;
     bool public isDistributed;
@@ -63,17 +71,12 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     event Deposit(
         address indexed _user,
         uint256 _amount,
-        uint256 _tokenId,
         uint256 _supply
     );
 
     event WithdrawPrincipal(
         address indexed _user,
-        uint256 _amount,
-        uint256 _prevTokenId,
-        uint256 _prevSupply,
-        uint256 _currentTokenId,
-        uint256 _currentSupply
+        uint256 _amount
     );
 
     event WithdrawCoupon(
@@ -101,6 +104,13 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     event RedeemYield(
         address _pendleRouter,
         uint256 _amount
+    );
+
+    event EarlyWithdraw(
+        address indexed _user,
+        uint256 _noOfBlock, 
+        uint256 _exactPtIn, 
+        uint256 _earlyWithdrawUser
     );
 
     /// @notice Event emitted when new issuance cycle is updated
@@ -253,6 +263,11 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         _;
     }
 
+    modifier onlyAdmin() {
+        require(msg.sender == admin, "Not a admin");
+        _;
+    }
+
     modifier onlyAccepted() {
         require(status == DataTypes.Status.Accepted, "Not accepted status");
         _;
@@ -292,6 +307,10 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
      */
     function removeFromWhitelist(address _account) external onlyManager {
         delete whitelisted[_account];
+    }
+
+    function addAdmin(address _account) external onlyManager {
+        admin = _account;
     }
 
     function fundAccept() external whenNotPaused onlyWhitelisted {
@@ -499,7 +518,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     }
 
     /**
-     * @dev Deposits the USDC into the structured product and mint ERC1155 NFT
+     * @dev Deposits the USDC into the structured product and mint ERC20 Token
      * @param _amount is the amount of USDC to deposit
      * @param _type True: include profit, False: without profit
      */
@@ -521,7 +540,6 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         principalBalanceList[msg.sender] += _amount;
         IERC20Token(tokenAddress).mint(msg.sender,_amount);
         totalCurrentSupply = totalCurrentSupply + _amount;
-        // ISHNFT(shNFT).mint(msg.sender, currentTokenId, supply, issuanceCycle.uri);
 
         currentCapacity += amountToDeposit;
         if (_type == true) {
@@ -529,7 +547,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
             userInfo[msg.sender].optionPayout = 0;
         }
 
-        emit Deposit(msg.sender, _amount, currentTokenId, supply);
+        emit Deposit(msg.sender, _amount,supply);
     }
 
     /**
@@ -553,10 +571,6 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
 
         emit WithdrawPrincipal(
             msg.sender, 
-            currentToken, 
-            prevTokenId, 
-            currentToken, 
-            currentTokenId, 
             currentToken
         );
     }
@@ -593,8 +607,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
      * @notice Distributes locked funds
      */
     function distributeFunds(
-        uint256 _yieldRate,
-        address _router
+        uint256 _yieldRate
     ) external onlyManager onlyLocked {
         require(!isDistributed, "Already distributed");
         require(_yieldRate <= 100, "Yield rate should be equal or less than 100");
@@ -616,11 +629,11 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     
         isDistributed = true;
         
-        emit DistributeFunds(exWallet, optionRate, _router, _yieldRate);
+        emit DistributeFunds(exWallet, optionRate, address(router), _yieldRate);
     }
 
     /**
-     * @notice Redeem yield from Lendle protocol(DeFi lending protocol)
+     * @notice Redeem yield from Pendle protocol(DeFi lending protocol)
      */
 
     function redeemYield(
@@ -636,6 +649,63 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
 
         emit RedeemYield(address(router), netTokenOut);
     }
+
+    function earlyWithdraw(uint256 _noOfBlock) external onlyIssued{
+        uint256 exactPtIn = 0;
+        uint256 decimals = _currencyDecimals();
+        uint256 earlyWithdrawUser = ((_noOfBlock * issuanceCycle.underlyingSpotRef) *(issuanceCycle.optionMinOrderSize * 10**(decimals)))/10;
+        IERC20(tokenAddress).transferFrom(msg.sender, deadAddress, earlyWithdrawUser); //SHToken = USDC
+
+        uint256 currentToken = IERC20Token(tokenAddress).checkBalanceOf(msg.sender);
+        uint256 withdrawBlockSize = (issuanceCycle.underlyingSpotRef * 10**(decimals) * issuanceCycle.optionMinOrderSize)/10;
+        uint256 totalBlock = currentToken / withdrawBlockSize;
+
+        if (totalBlock >= _noOfBlock){
+            exactPtIn  = (earlyWithdrawUser * netPtOut / currentCapacity) ;
+        }
+
+
+
+        IERC20(PT).approve(address(router), exactPtIn);
+        (uint256 netTokenOut,,) = router.swapExactPtForToken(
+        address(this), address(market), exactPtIn, createTokenOutputStruct(currencyAddress, 0), emptyLimit);
+
+        netPtOut-=exactPtIn; // new thing
+
+        currency.safeTransfer(msg.sender, netTokenOut);
+
+
+        emit EarlyWithdraw(msg.sender, _noOfBlock, exactPtIn, earlyWithdrawUser);
+        // emit(_noOfBlock, exactPtIn, earlyWithdrawUser,totalCurrentSupply, time,false) T => 1 op value
+
+        // emit(_noOfBlock, exactPtIn, earlyWithdrawUser,totalCurrentSupply, time,false) T+1
+
+    }
+
+    function storageOptionPosition(address[] memory _userList, uint256[] memory _amountList) external onlyIssued onlyAdmin
+    {
+        for (uint256 i = 0; i < _userList.length; i++) 
+        {
+            UserOptionPositions.push(UserOptionPosition({
+                    userAddress: _userList[i],
+                    value: _amountList[i]
+            }));
+            totalOptionPosition += _amountList[i];
+        }
+    }
+
+    function userOptionPosition() external onlyIssued onlyManager {
+
+        currency.safeTransferFrom(msg.sender, address(this), totalOptionPosition);
+        
+        for (uint256 i = 0; i < UserOptionPositions.length; i++) 
+        {
+            currency.safeTransfer(UserOptionPositions[i].userAddress, UserOptionPositions[i].value);
+        }
+        totalOptionPosition = 0;
+        delete UserOptionPositions;
+    }
+
 
     /**
      * @dev Transfers option profit from a qredo wallet, called by an owner
