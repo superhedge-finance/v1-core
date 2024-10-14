@@ -10,6 +10,7 @@ import "./libraries/DataTypes.sol";
 import "./SHProduct.sol";
 
 
+
 /**
 * @notice Factory contract to create new products
 */
@@ -68,8 +69,6 @@ contract SHFactory is ISHFactory, OwnableUpgradeable {
        address _market
    ) external onlyOwner {
        require(getProduct[_name] == address(0), "Product already exists");
-
-       require((_maxCapacity % 1000) == 0, "Max capacity must be whole-number thousands");
 
        // create new product contract
        SHProduct product = new SHProduct();

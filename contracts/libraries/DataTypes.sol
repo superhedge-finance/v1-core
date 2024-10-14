@@ -4,7 +4,7 @@ pragma solidity ^0.8.9;
 library DataTypes {
     /// @notice Struct representing issuance cycle
     struct IssuanceCycle {
-        uint256 coupon;
+        uint8 coupon;
         uint256 strikePrice1;
         uint256 strikePrice2;
         uint256 strikePrice3;
@@ -14,9 +14,10 @@ library DataTypes {
         uint256 issuanceDate;
         uint256 maturityDate;
         string apy;
-        uint256 underlyingSpotRef;
-        uint256 optionMinOrderSize;
+        uint8 underlyingSpotRef;
+        uint8 optionMinOrderSize;
         string subAccountId;
+        uint8 participation;
     }
 
     /// @notice Enum representing product status

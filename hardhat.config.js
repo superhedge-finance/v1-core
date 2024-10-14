@@ -1,20 +1,19 @@
 require("@nomicfoundation/hardhat-toolbox");
-const { PRIVATE_KEY, API_KEY_ARBISCAN } = require('./secret.json');
-
-// Arbiscan API key
-const apiKey = API_KEY_ARBISCAN;
-
-// From wallet used to deploy
-const privateKey = PRIVATE_KEY;
-
+// require("@nomiclabs/hardhat-etherscan");
+const apiKey = ""
+const privateKey = ""
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-  defaultNetwork: "arbitrum",
+  defaultNetwork: "arb",
   networks: {
-    arbitrum:{
-      url:'https://arb1.arbitrum.io/rpc',
+    arb:{
+      // url: "https://rpc.ankr.com/arbitrum",
+      // url: "https://endpoints.omniatech.io/v1/arbitrum/one/public",
+      url:'https://arbitrum-mainnet.infura.io/v3/de2c1ced559c453e86d2cf05b4c5e35b',
+      // chainId: 42161,
+      // gasPrice: 200000,
       accounts: [privateKey]
     },
   },
@@ -22,7 +21,8 @@ module.exports = {
     version: "0.8.23",
     settings: {
       optimizer: {
-        enabled: true
+        enabled: true,
+        runs: 200 
       }
     }
   },
@@ -37,5 +37,6 @@ module.exports = {
   },
   etherscan: {
     apiKey: apiKey
+
   }
 };

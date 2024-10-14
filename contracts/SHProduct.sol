@@ -9,22 +9,21 @@ import "@pendle/core-v2/contracts/interfaces/IPAllActionV3.sol";
 import "@pendle/core-v2/contracts/interfaces/IPMarket.sol";
 import "./StructGen.sol";
 import "./interfaces/ISHProduct.sol";
-import "./interfaces/ISHFactory.sol";
+// import "./interfaces/ISHFactory.sol";
 import "./interfaces/IERC20Token.sol";
 import "./libraries/DataTypes.sol";
 import "./libraries/Array.sol";
+import "./libraries/EventFunctions.sol";
 
-contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable {
+contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable,EventFunctions{
     IPPrincipalToken public PT;
     IPAllActionV3 public router ;
     address public currencyAddress;
-    address public deadAddress = 0x000000000000000000000000000000000000dEaD;
     IPMarket public market;
 
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using Array for address[];
     uint256 public netPtOut;
-    mapping(address => uint256) public principalBalanceList;
 
     struct UserInfo {
         uint256 coupon;
@@ -49,11 +48,8 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     uint256 public maxCapacity;
     uint256 public currentCapacity;
     uint256 public optionProfit;
-    uint256 public totalCurrentSupply;
     uint256 public totalOptionPosition;
-    
-    uint256 public currentTokenId;
-    uint256 public prevTokenId;
+    uint256 public totalNumberOfBlocks;
 
     DataTypes.Status public status;
     DataTypes.IssuanceCycle public issuanceCycle;
@@ -67,149 +63,6 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
 
     /// @notice restricting access to the automation functions
     mapping(address => bool) public whitelisted;
-    
-    event Deposit(
-        address indexed _user,
-        uint256 _amount,
-        uint256 _supply
-    );
-
-    event WithdrawPrincipal(
-        address indexed _user,
-        uint256 _amount
-    );
-
-    event WithdrawCoupon(
-        address indexed _user,
-        uint256 _amount
-    );
-
-    event WithdrawOption(
-        address indexed _user,
-        uint256 _amount
-    );
-
-    event RedeemOptionPayout(
-        address indexed _from,
-        uint256 _amount
-    );
-
-    event DistributeFunds(
-        address indexed _qredoDeribit,
-        uint256 _optionRate,
-        address indexed _pendleRouter,
-        uint256 _yieldRate
-    );
-    
-    event RedeemYield(
-        address _pendleRouter,
-        uint256 _amount
-    );
-
-    event EarlyWithdraw(
-        address indexed _user,
-        uint256 _noOfBlock, 
-        uint256 _exactPtIn, 
-        uint256 _earlyWithdrawUser
-    );
-
-    /// @notice Event emitted when new issuance cycle is updated
-    event UpdateParameters(
-        uint256 _coupon,
-        uint256 _strikePrice1,
-        uint256 _strikePrice2,
-        uint256 _strikePrice3,
-        uint256 _strikePrice4,
-        uint256 _tr1,
-        uint256 _tr2,
-        string _apy,
-        uint256 _underlyingSpotRef,
-        uint256 _optionMinOrderSize
-    );
-
-    // event FundAccept(
-    //     uint256 _optionProfit,
-    //     uint256 _prevTokenId,
-    //     uint256 _currentTokenId,
-    //     uint256 _numOfHolders,
-    //     uint256 _timestamp
-    // );
-
-    event FundAccept(
-        uint256 _optionProfit,
-        uint256 _timestamp
-    );
-
-    event FundLock(
-        uint256 _timestamp
-    );
-
-    // event Issuance(
-    //     uint256 _currentTokenId,
-    //     uint256 _prevHolders,
-    //     uint256 _timestamp
-    // );
-
-    event Issuance(
-        uint256 _timestamp
-    );
-
-    event Mature(
-        uint256 _prevTokenId,
-        uint256 _currentTokenId,
-        uint256 _timestamp
-    );
-    
-    event Coupon(
-        address indexed _user,
-        uint256 _amount
-    );
-
-    event OptionPayout(
-        address indexed _user,
-        uint256 _amount
-    );
-
-    event UpdateCoupon(
-        uint256 _newCoupon
-    );
-
-    event UpdateStrikePrices(
-        uint256 _strikePrice1,
-        uint256 _strikePrice2,
-        uint256 _strikePrice3,
-        uint256 _strikePrice4
-    );
-
-    event UpdateOptionMinOrderSize(
-        uint256 _optionMinOrderSize
-    );
-
-    event UpdateUnderlyingSpotRef(
-        uint256 _underlyingSpotRef
-    );
-
-    event UpdateTRs(
-        uint256 _newTr1,
-        uint256 _newTr2
-    );
-
-    event UpdateSubAccountId(
-        string _subAccountId
-    );
-
-    event UpdateAPY(
-        string _apy
-    );
-    
-    event UpdateTimes(
-        uint256 _issuanceDate,
-        uint256 _maturityDate
-    );
-
-    event UpdateName(
-        string _name
-    );
 
     function initialize(
         string memory _name,
@@ -232,24 +85,22 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
 
         manager = _manager;
         exWallet = _exWallet;
-        maxCapacity = _maxCapacity;
         tokenAddress = _tokenAddress;
+        maxCapacity = _maxCapacity;
         currency = _currency;
         currencyAddress = _currencyAddress;
         shFactory = msg.sender;
 
         require(_issuanceCycle.issuanceDate > block.timestamp, 
-            "Issuance date should be bigger than current timestamp");
+            "ID bigger");
         require(_issuanceCycle.maturityDate > _issuanceCycle.issuanceDate, 
-            "Maturity timestamp should be bigger than issuance one");
+            "MT bigger");
         
         issuanceCycle = _issuanceCycle;
 
         router = IPAllActionV3(_router);
         market = IPMarket(_market);
         (, PT,) = IPMarket(market).readTokens();
-
-
     }
     
     modifier onlyWhitelisted() {
@@ -264,27 +115,27 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     }
 
     modifier onlyAdmin() {
-        require(msg.sender == admin, "Not a admin");
+        require(msg.sender == admin, "Not admin");
         _;
     }
 
     modifier onlyAccepted() {
-        require(status == DataTypes.Status.Accepted, "Not accepted status");
+        require(status == DataTypes.Status.Accepted, "Not accepted");
         _;
     }
 
     modifier onlyLocked() {
-        require(status == DataTypes.Status.Locked, "Not locked status");
+        require(status == DataTypes.Status.Locked, "Not locked");
         _;
     }
 
     modifier onlyIssued() {
-        require(status == DataTypes.Status.Issued, "Not issued status");
+        require(status == DataTypes.Status.Issued, "Not issued");
         _;
     }
 
     modifier onlyMature() {
-        require(status == DataTypes.Status.Mature, "Not mature status");
+        require(status == DataTypes.Status.Mature, "Not mature");
         _;
     }
 
@@ -294,11 +145,17 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         _;
     }
 
+    modifier AcceptedOrLockedOrMature() {
+        require(status == DataTypes.Status.Locked || status == DataTypes.Status.Mature || status == DataTypes.Status.Accepted, 
+            "Neither mature nor locked");
+        _;
+    }
+
     /**
      * @notice Whitelists the additional accounts to call the automation functions.
      */
     function whitelist(address _account) external onlyManager {
-        require(!whitelisted[_account], "Already whitelisted");
+        require(!whitelisted[_account], "Whitelisted");
         whitelisted[_account] = true;
     }
 
@@ -316,17 +173,19 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     function fundAccept() external whenNotPaused onlyWhitelisted {
         require(status == DataTypes.Status.Pending || status == DataTypes.Status.Mature, 
             "Neither mature nor pending status");
+        address[] memory totalHolders = IERC20Token(tokenAddress).getUsers();
         uint256 _optionProfit = optionProfit;
+        if (_optionProfit > 0) {
+            uint256 totalSupply = IERC20(tokenAddress).totalSupply();
+            for (uint256 i = 0; i < totalHolders.length; i++) {
+                uint256 prevSupply = IERC20(tokenAddress).balanceOf(totalHolders[i]);
+                userInfo[totalHolders[i]].optionPayout += prevSupply * _optionProfit / totalSupply;
+            }
+            optionProfit = 0;
+        }
+
         // Then update status
         status = DataTypes.Status.Accepted;
-
-        // emit FundAccept(
-        //     _optionProfit, 
-        //     prevTokenId, 
-        //     currentTokenId, 
-        //     totalHolders.length, 
-        //     block.timestamp
-        // );
 
         emit FundAccept(
             _optionProfit, 
@@ -342,26 +201,26 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
 
     function issuance() external whenNotPaused onlyLocked onlyWhitelisted {
         status = DataTypes.Status.Issued;
-
-        // emit Issuance(currentTokenId, totalHolders.length, block.timestamp);
         emit Issuance(block.timestamp);
     }
 
     function mature() external whenNotPaused onlyIssued onlyWhitelisted {
         status = DataTypes.Status.Mature;
-        emit Mature(prevTokenId, currentTokenId, block.timestamp);
+        emit Mature(block.timestamp);
     }
 
     /**
      * @dev Update users' coupon balance every week
      */
-    function coupon(address[] memory _holdersList, uint256[] memory _amountHoldersList) external whenNotPaused onlyIssued onlyWhitelisted {
-        for (uint256 i = 0; i < _holdersList.length; i++) {
-            uint256 _amount = _amountHoldersList[i] * issuanceCycle.coupon / 10000;
-            userInfo[_holdersList[i]].coupon += _amount;
+    function coupon() external whenNotPaused onlyIssued onlyWhitelisted {
 
+        address[] memory totalHolders = IERC20Token(tokenAddress).getUsers();
+        for (uint256 i = 0; i < totalHolders.length; i++) {
+            uint256 prevSupply = IERC20(tokenAddress).balanceOf(totalHolders[i]);
+            uint256 _amount = prevSupply * issuanceCycle.coupon / 10000;
+            userInfo[totalHolders[i]].coupon += _amount;
             emit Coupon(
-                    _holdersList[i],
+                    totalHolders[i],
                     _amount
                 );
         }
@@ -372,149 +231,50 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
      * @param _newCoupon weekly coupon rate in basis point; e.g. 0.10%/wk => 10
      */
     function updateCoupon(
-        uint256 _newCoupon
+        uint8 _newCoupon
     ) public LockedOrMature onlyManager {
         issuanceCycle.coupon = _newCoupon;
 
         emit UpdateCoupon(_newCoupon);
     }
 
-    /**
-     * @dev Updates strike prices
-     */
-    function updateStrikePrices(
-        uint256 _strikePrice1,
-        uint256 _strikePrice2,
-        uint256 _strikePrice3,
-        uint256 _strikePrice4
-    ) public LockedOrMature onlyManager {
-        issuanceCycle.strikePrice1 = _strikePrice1;
-        issuanceCycle.strikePrice2 = _strikePrice2;
-        issuanceCycle.strikePrice3 = _strikePrice3;
-        issuanceCycle.strikePrice4 = _strikePrice4;
 
-        emit UpdateStrikePrices(
-            _strikePrice1, 
-            _strikePrice2, 
-            _strikePrice3, 
-            _strikePrice4
-        );
-    }
-
-    /**
-     * @dev Updates TR1 & TR2 (total returns %)
-     */
-    function updateTRs(
-        uint256 _newTr1,
-        uint256 _newTr2
-    ) public LockedOrMature onlyManager {
-        issuanceCycle.tr1 = _newTr1;
-        issuanceCycle.tr2 = _newTr2;
-
-        emit UpdateTRs(_newTr1, _newTr2);
-    }
-
-    /**
-     *
-     */
-    function updateAPY(
-        string memory _apy
-    ) public LockedOrMature onlyManager {
-        issuanceCycle.apy = _apy;
-
-        emit UpdateAPY(_apy);
-    }
-
-    function updateOptionMinOrderSize(uint256 _optionMinOrderSize) public LockedOrMature onlyManager {
+    function updateOptionMinOrderSize(uint8 _optionMinOrderSize) public LockedOrMature onlyManager {
         issuanceCycle.optionMinOrderSize = _optionMinOrderSize;
 
         emit UpdateOptionMinOrderSize(_optionMinOrderSize);
     }
 
-    function updateUnderlyingSpotRef(uint256 _underlyingSpotRef) public LockedOrMature onlyManager {
+    function updateUnderlyingSpotRef(uint8 _underlyingSpotRef) public LockedOrMature onlyManager {
         issuanceCycle.underlyingSpotRef = _underlyingSpotRef;
 
         emit UpdateUnderlyingSpotRef(_underlyingSpotRef);
     }
 
-    function updateSubAccountId(string memory _subAccountId) public LockedOrMature onlyManager {
-        issuanceCycle.subAccountId = _subAccountId;
-
-        emit UpdateSubAccountId(_subAccountId);
+    function updateParticipation(uint8 _participation) public AcceptedOrLockedOrMature onlyManager {
+        issuanceCycle.participation = _participation;
+        emit UpdateParticipation(_participation);
     }
 
     /**
      * @dev Update all parameters for next issuance cycle, called by only manager
      */
-    function updateParameters(
-        uint256 _coupon,
-        uint256 _strikePrice1,
-        uint256 _strikePrice2,
-        uint256 _strikePrice3,
-        uint256 _strikePrice4,
-        uint256 _tr1,
-        uint256 _tr2,
-        string memory _apy,
-        uint256 _underlyingSpotRef,
-        uint256 _optionMinOrderSize,
-        string memory _subAccountId
-        
-    ) external LockedOrMature onlyManager {
+    function updateParameters(DataTypes.IssuanceCycle memory _issuanceCycle) external LockedOrMature onlyManager {
 
-        updateCoupon(_coupon);
+        updateCoupon(_issuanceCycle.coupon);
 
-        updateStrikePrices(_strikePrice1, _strikePrice2, _strikePrice3, _strikePrice4);
+        updateOptionMinOrderSize(_issuanceCycle.optionMinOrderSize);
 
-        updateTRs(_tr1, _tr2);
+        updateUnderlyingSpotRef(_issuanceCycle.underlyingSpotRef);
 
-        updateAPY(_apy);
-
-        updateOptionMinOrderSize(_optionMinOrderSize);
-
-        updateUnderlyingSpotRef(_underlyingSpotRef);
-
-        updateSubAccountId(_subAccountId);
-
-        emit UpdateParameters(
-            _coupon, 
-            _strikePrice1, 
-            _strikePrice2,
-            _strikePrice3,
-            _strikePrice4,
-            _tr1,
-            _tr2,
-            _apy,
-            _underlyingSpotRef,
-            _optionMinOrderSize
-        );
-    }
-    function updateTimes(
-        uint256 _issuanceDate,
-        uint256 _maturityDate
-    ) external onlyMature onlyManager {
-        require(_issuanceDate > block.timestamp, 
-            "Issuance timestamp should be bigger than current one");
-        require(_maturityDate > _issuanceDate, 
-            "Maturity timestamp should be bigger than issuance one");
-        
-        issuanceCycle.issuanceDate = _issuanceDate;
-        issuanceCycle.maturityDate = _maturityDate;
-
-        emit UpdateTimes(_issuanceDate, _maturityDate);
-    }
-    /**
-     * @dev Update issuance & maturity dates
-     */
+        updateParticipation(_issuanceCycle.participation);
     
-
-    /**
-     * @notice Update product name
-     */
-    function updateName(string memory _name) external {
-        require(msg.sender == shFactory, "Not a factory contract");
-        name = _name;
-
-        emit UpdateName(_name);
+        emit UpdateParameters(
+        _issuanceCycle.coupon, 
+        _issuanceCycle.underlyingSpotRef,
+        _issuanceCycle.optionMinOrderSize,
+        _issuanceCycle.participation
+        );
     }
 
     /**
@@ -523,23 +283,19 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
      * @param _type True: include profit, False: without profit
      */
     function deposit(uint256 _amount, bool _type) external whenNotPaused nonReentrant onlyAccepted{
-        require(_amount > 0, "Amount must be greater than zero");
+        require(_amount > 0, "Greater zero");
+        uint256 decimals = _currencyDecimals();
         
         uint256 amountToDeposit = _amount;
         if (_type == true) {
             amountToDeposit += userInfo[msg.sender].coupon + userInfo[msg.sender].optionPayout;
         }
-
-        uint256 decimals = _currencyDecimals();
-        // require((amountToDeposit % (1000 * 10 ** decimals)) == 0, "Amount must be whole-number thousands"); // > 1000
         require((maxCapacity * 10 ** decimals) >= (currentCapacity + amountToDeposit), "Product is full");
 
         uint256 supply = amountToDeposit / (1 * 10 ** decimals);
 
         currency.safeTransferFrom(msg.sender, address(this), _amount);
-        principalBalanceList[msg.sender] += _amount;
         IERC20Token(tokenAddress).mint(msg.sender,_amount);
-        totalCurrentSupply = totalCurrentSupply + _amount;
 
         currentCapacity += amountToDeposit;
         if (_type == true) {
@@ -554,20 +310,12 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
      * @dev Withdraws the principal from the structured product
      */
     function withdrawPrincipal() external nonReentrant onlyAccepted {
-        uint256 currentToken = IERC20Token(tokenAddress).checkBalanceOf(msg.sender);
-        IERC20(tokenAddress).transferFrom(msg.sender, deadAddress, currentToken);
-        principalBalanceList[msg.sender] = 0;
+        uint256 currentToken = IERC20(tokenAddress).balanceOf(msg.sender);
+
+        IERC20Token(tokenAddress).burn(msg.sender,currentToken);
+        // IERC20(tokenAddress).transferFrom(msg.sender, deadAddress, currentToken);
         currency.safeTransfer(msg.sender, currentToken);
         currentCapacity -= currentToken;
-
-        // emit WithdrawPrincipal(
-        //     msg.sender, 
-        //     principal, 
-        //     prevTokenId, 
-        //     prevSupply, 
-        //     currentTokenId, 
-        //     currentSupply
-        // );
 
         emit WithdrawPrincipal(
             msg.sender, 
@@ -580,8 +328,8 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
      */
     function withdrawCoupon() external nonReentrant {
         uint256 _couponAmount = userInfo[msg.sender].coupon;
-        require(_couponAmount > 0, "No coupon payout");
-        require(totalBalance() >= _couponAmount, "Insufficient balance");
+        require(_couponAmount > 0, "No CP");
+        require(totalBalance() >= _couponAmount, "Balance");
         
         currency.safeTransfer(msg.sender, _couponAmount);
         userInfo[msg.sender].coupon = 0;
@@ -594,8 +342,8 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     //  */
     function withdrawOption() external nonReentrant {
         uint256 _optionAmount = userInfo[msg.sender].optionPayout;
-        require(_optionAmount > 0, "No option payout");
-        require(totalBalance() >= _optionAmount, "Insufficient balance");
+        require(_optionAmount > 0, "No OP");
+        require(totalBalance() >= _optionAmount, "Balance");
         
         currency.safeTransfer(msg.sender, _optionAmount);
         userInfo[msg.sender].optionPayout = 0;
@@ -607,11 +355,11 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
      * @notice Distributes locked funds
      */
     function distributeFunds(
-        uint256 _yieldRate
+        uint8 _yieldRate
     ) external onlyManager onlyLocked {
         require(!isDistributed, "Already distributed");
-        require(_yieldRate <= 100, "Yield rate should be equal or less than 100");
-        uint256 optionRate = 100 - _yieldRate;
+        require(_yieldRate <= 100, "Less than 100");
+        uint8 optionRate = 100 - _yieldRate;
 
         uint256 optionAmount;
         if (optionRate > 0) {
@@ -639,14 +387,16 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     function redeemYield(
     ) external onlyManager onlyMature {
         require(isDistributed, "Not distributed");
-        // Withdraw your asset based on a aToken amount
         uint256 exactPtIn = IERC20(PT).balanceOf(address(this));
-        IERC20(PT).approve(address(router), exactPtIn);
-        (uint256 netTokenOut,,) = router.swapExactPtForToken(
-        address(this), address(market), exactPtIn, createTokenOutputStruct(currencyAddress, 0), emptyLimit);
+        uint256 netTokenOut;
+        if (exactPtIn > 0)
+        {
+            IERC20(PT).approve(address(router), exactPtIn);
+            (netTokenOut,,) = router.swapExactPtForToken(
+            address(this), address(market), exactPtIn, createTokenOutputStruct(currencyAddress, 0), emptyLimit);
+        }
         netPtOut = 0;
         isDistributed = false;
-
         emit RedeemYield(address(router), netTokenOut);
     }
 
@@ -654,32 +404,24 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         uint256 exactPtIn = 0;
         uint256 decimals = _currencyDecimals();
         uint256 earlyWithdrawUser = ((_noOfBlock * issuanceCycle.underlyingSpotRef) *(issuanceCycle.optionMinOrderSize * 10**(decimals)))/10;
-        IERC20(tokenAddress).transferFrom(msg.sender, deadAddress, earlyWithdrawUser); //SHToken = USDC
+        uint256 currentToken = IERC20(tokenAddress).balanceOf(msg.sender);
 
-        uint256 currentToken = IERC20Token(tokenAddress).checkBalanceOf(msg.sender);
         uint256 withdrawBlockSize = (issuanceCycle.underlyingSpotRef * 10**(decimals) * issuanceCycle.optionMinOrderSize)/10;
         uint256 totalBlock = currentToken / withdrawBlockSize;
 
         if (totalBlock >= _noOfBlock){
-            exactPtIn  = (earlyWithdrawUser * netPtOut / currentCapacity) ;
+            exactPtIn  = (earlyWithdrawUser * netPtOut / currentCapacity);  
         }
 
-
-
+        IERC20Token(tokenAddress).burn(msg.sender,earlyWithdrawUser);
         IERC20(PT).approve(address(router), exactPtIn);
         (uint256 netTokenOut,,) = router.swapExactPtForToken(
         address(this), address(market), exactPtIn, createTokenOutputStruct(currencyAddress, 0), emptyLimit);
-
-        netPtOut-=exactPtIn; // new thing
-
+        netPtOut-=exactPtIn; 
+        currentCapacity -= earlyWithdrawUser;
+        totalNumberOfBlocks+=_noOfBlock;
         currency.safeTransfer(msg.sender, netTokenOut);
-
-
         emit EarlyWithdraw(msg.sender, _noOfBlock, exactPtIn, earlyWithdrawUser);
-        // emit(_noOfBlock, exactPtIn, earlyWithdrawUser,totalCurrentSupply, time,false) T => 1 op value
-
-        // emit(_noOfBlock, exactPtIn, earlyWithdrawUser,totalCurrentSupply, time,false) T+1
-
     }
 
     function storageOptionPosition(address[] memory _userList, uint256[] memory _amountList) external onlyIssued onlyAdmin
@@ -694,7 +436,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         }
     }
 
-    function userOptionPosition() external onlyIssued onlyManager {
+    function userOptionPositionPaid() external onlyIssued onlyManager {
 
         currency.safeTransferFrom(msg.sender, address(this), totalOptionPosition);
         
@@ -703,9 +445,10 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
             currency.safeTransfer(UserOptionPositions[i].userAddress, UserOptionPositions[i].value);
         }
         totalOptionPosition = 0;
+        totalNumberOfBlocks = 0;
         delete UserOptionPositions;
+        emit UserOptionPositionPaid(totalOptionPosition);
     }
-
 
     /**
      * @dev Transfers option profit from a qredo wallet, called by an owner
@@ -724,7 +467,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
      * previous supply and current supply
      */
     function principalBalance(address _user) public view returns (uint256) {
-        return principalBalanceList[_user];
+        return IERC20(tokenAddress).balanceOf(_user);
     }
 
     /**
@@ -756,13 +499,6 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     }
 
     /**
-     * @notice Calculates the currency amount based on token supply
-     */
-    function _convertTokenToCurrency(uint256 _tokenSupply) internal view returns (uint256) {
-        return _tokenSupply * 1 * (10 ** _currencyDecimals());
-    }
-
-    /**
      * @dev Pause the product
      */
     function pause() external onlyManager {
@@ -772,6 +508,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     /**
      * @dev Unpause the product
      */
+
     function unpause() external onlyManager {
         _unpause();
     }
