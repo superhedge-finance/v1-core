@@ -17,6 +17,7 @@ import "./libraries/EventFunctions.sol";
 
 contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable,EventFunctions{
     IPPrincipalToken public PT;
+    IPYieldToken public YT;
     IPAllActionV3 public router ;
     address public currencyAddress;
     IPMarket public market;
@@ -100,7 +101,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
 
         router = IPAllActionV3(_router);
         market = IPMarket(_market);
-        (, PT,) = IPMarket(market).readTokens();
+        (, PT,YT) = IPMarket(market).readTokens();
     }
     
     modifier onlyWhitelisted() {
@@ -238,42 +239,54 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         emit UpdateCoupon(_newCoupon);
     }
 
-
-    function updateOptionMinOrderSize(uint8 _optionMinOrderSize) public LockedOrMature onlyManager {
-        issuanceCycle.optionMinOrderSize = _optionMinOrderSize;
-
-        emit UpdateOptionMinOrderSize(_optionMinOrderSize);
-    }
-
-    function updateUnderlyingSpotRef(uint8 _underlyingSpotRef) public LockedOrMature onlyManager {
-        issuanceCycle.underlyingSpotRef = _underlyingSpotRef;
-
-        emit UpdateUnderlyingSpotRef(_underlyingSpotRef);
-    }
-
-    function updateParticipation(uint8 _participation) public AcceptedOrLockedOrMature onlyManager {
-        issuanceCycle.participation = _participation;
-        emit UpdateParticipation(_participation);
-    }
-
     /**
      * @dev Update all parameters for next issuance cycle, called by only manager
      */
-    function updateParameters(DataTypes.IssuanceCycle memory _issuanceCycle) external LockedOrMature onlyManager {
+    function updateParameters(string memory _name, DataTypes.IssuanceCycle memory _issuanceCycle,address _router,address _market) external onlyAccepted onlyManager {
 
-        updateCoupon(_issuanceCycle.coupon);
+        name = _name;
+        router = IPAllActionV3(_router);
+        market = IPMarket(_market);
+        (,PT,YT) = IPMarket(market).readTokens();
 
-        updateOptionMinOrderSize(_issuanceCycle.optionMinOrderSize);
+        issuanceCycle.tr1 = _issuanceCycle.tr1;
+        issuanceCycle.tr2 = _issuanceCycle.tr2;
+        issuanceCycle.strikePrice1 = _issuanceCycle.strikePrice1;
+        issuanceCycle.strikePrice2 = _issuanceCycle.strikePrice2;
+        issuanceCycle.strikePrice3 = _issuanceCycle.strikePrice3;
+        issuanceCycle.strikePrice4 = _issuanceCycle.strikePrice4;
+        issuanceCycle.apy = _issuanceCycle.apy;
+        issuanceCycle.subAccountId = _issuanceCycle.subAccountId;
+        issuanceCycle.issuanceDate = _issuanceCycle.issuanceDate;
+        issuanceCycle.maturityDate = _issuanceCycle.maturityDate;
 
-        updateUnderlyingSpotRef(_issuanceCycle.underlyingSpotRef);
-
-        updateParticipation(_issuanceCycle.participation);
-    
         emit UpdateParameters(
-        _issuanceCycle.coupon, 
-        _issuanceCycle.underlyingSpotRef,
-        _issuanceCycle.optionMinOrderSize,
-        _issuanceCycle.participation
+            _name,
+            _router, 
+            _market
+        );
+    }
+
+    function updateStructure(uint256 _strikePrice1, uint256 _strikePrice2, uint256 _strikePrice3, uint256 _strikePrice4,
+    uint256 _tr1, uint256 _tr2, string memory _apy, uint8 _underlyingSpotRef) external onlyLocked onlyManager {
+        issuanceCycle.strikePrice1 = _strikePrice1;
+        issuanceCycle.strikePrice2 = _strikePrice2;
+        issuanceCycle.strikePrice3 = _strikePrice3;
+        issuanceCycle.strikePrice4 = _strikePrice4;
+        issuanceCycle.tr1 = _tr1;
+        issuanceCycle.tr2 = _tr2;
+        issuanceCycle.apy = _apy;
+        issuanceCycle.underlyingSpotRef = _underlyingSpotRef;
+        
+        emit UpdateStructure(
+            _strikePrice1,
+            _strikePrice2,
+            _strikePrice3,
+            _strikePrice4,
+            _tr1,
+            _tr2,
+            _apy,
+            _underlyingSpotRef
         );
     }
 
@@ -392,9 +405,11 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         if (exactPtIn > 0)
         {
             IERC20(PT).approve(address(router), exactPtIn);
-            (netTokenOut,,) = router.swapExactPtForToken(
-            address(this), address(market), exactPtIn, createTokenOutputStruct(currencyAddress, 0), emptyLimit);
+            // (netTokenOut,,) = router.swapExactPtForToken(
+            // address(this), address(market), exactPtIn, createTokenOutputStruct(currencyAddress, 0), emptyLimit);
+            (netTokenOut,) = router.redeemPyToToken(address(this), address(YT), exactPtIn, createTokenOutputStruct(currencyAddress, 0)); 
         }
+
         netPtOut = 0;
         isDistributed = false;
         emit RedeemYield(address(router), netTokenOut);

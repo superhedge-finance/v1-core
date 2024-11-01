@@ -51,10 +51,20 @@ contract EventFunctions {
 
     /// @notice Event emitted when new issuance cycle is updated
     event UpdateParameters(
-        uint8 _coupon,
-        uint8 _underlyingSpotRef,
-        uint8 _optionMinOrderSize,
-        uint8 _participation
+        string _name,
+        address _router, 
+        address _market
+    );
+
+    event UpdateStructure(
+        uint256 _strikePrice1,
+        uint256 _strikePrice2,
+        uint256 _strikePrice3,
+        uint256 _strikePrice4,
+        uint256 _tr1,
+        uint256 _tr2,
+        string _apy,
+        uint8 _underlyingSpotRef
     );
 
     event FundAccept(
@@ -86,17 +96,5 @@ contract EventFunctions {
 
     event UpdateCoupon(
         uint256 _newCoupon
-    );
-
-    event UpdateOptionMinOrderSize(
-        uint256 _optionMinOrderSize
-    );
-
-    event UpdateUnderlyingSpotRef(
-        uint256 _underlyingSpotRef
-    );
-
-    event UpdateParticipation(
-        uint256 _participation
     );
 }
