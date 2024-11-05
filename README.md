@@ -10,20 +10,15 @@ Principal-protected Defi Structured Products
 2. Install project packages:
 npm install
 
-This will include Hardhat installation, of the version specified in package.json
-
 3. Create secret.json file with environment variables:
 {
     "PRIVATE_KEY" : "YOUR_PRIVATE_KEY",
-    "API_KEY_ARBISCAN": "YOUR_ARBISCAN_API_KEY"
+    "API_KEY_ETHERSCAN": "YOUR_ETHERSCAN_API_KEY"
 }
 
-4. Deploy contracts below:
-Edit the file scripts/deploy.js, and run
-npx hardhat run scripts/deploy.js --network arbitrum
+4. Deploy using from /scripts in this order
 
- i)     SHTokenFactory
- ii)    SHFactory
+ i)     deployTokenFactory.js
+ ii)    deployFactoryContract.js
 
-5. Verify each of the deployed contracts by running:
-npx hardhat verify --contract "contracts/CONTRACT.sol:CONTRACT" --network arbitrum 0x_CONTRACT_ADDRESS
+5. Verify each of the deployed contracts to run them from the block explorer
