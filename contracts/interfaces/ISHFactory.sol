@@ -10,7 +10,7 @@ interface ISHFactory {
         string memory _underlying,
         IERC20Upgradeable _currency,
         address _manager,
-        address _qredoWallet,
+        address _exWallet,
         uint256 _maxCapacity,
         DataTypes.IssuanceCycle memory _issuanceCycle,
         address _router,
