@@ -466,10 +466,10 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     }
 
     /**
-     * @dev Transfers option profit from a qredo wallet, called by an owner
+     * @dev Transfers option profit from a ex wallet, called by an owner
      */
     function redeemOptionPayout(uint256 _optionProfit) external onlyMature {
-        require(msg.sender == exWallet, "Not a qredo wallet");
+        require(msg.sender == exWallet, "Not a ex wallet");
         currency.safeTransferFrom(msg.sender, address(this), _optionProfit);
         optionProfit = _optionProfit;
 

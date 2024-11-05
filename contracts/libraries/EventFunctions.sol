@@ -29,7 +29,7 @@ contract EventFunctions {
     );
 
     event DistributeFunds(
-        address indexed _qredoDeribit,
+        address indexed _exWallet,
         uint256 _optionRate,
         address indexed _pendleRouter,
         uint8 _yieldRate

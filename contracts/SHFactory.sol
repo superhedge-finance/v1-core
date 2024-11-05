@@ -50,7 +50,7 @@ contract SHFactory is ISHFactory, OwnableUpgradeable {
     * @param _underlying is the underlying asset label
     * @param _currency principal asset, USDC address
     * @param _manager manager of the product
-    * @param _qredoWallet is the wallet address of Qredo
+    * @param _exWallet is the wallet address of exWallet
     * @param _maxCapacity is the maximum USDC amount that this product can accept
     * @param _issuanceCycle is the struct variable with issuance date,
        maturiy date, coupon, strike1 and strke2
@@ -62,7 +62,7 @@ contract SHFactory is ISHFactory, OwnableUpgradeable {
        string memory _underlying,
        IERC20Upgradeable _currency,
        address _manager,
-       address _qredoWallet,
+       address _exWallet,
        uint256 _maxCapacity,
        DataTypes.IssuanceCycle memory _issuanceCycle,
        address _router,
@@ -83,7 +83,7 @@ contract SHFactory is ISHFactory, OwnableUpgradeable {
            _underlying,
            _currency,
            _manager,
-           _qredoWallet,
+           _exWallet,
            _maxCapacity,
            _issuanceCycle,
            _router,
