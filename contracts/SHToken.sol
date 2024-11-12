@@ -10,12 +10,14 @@ contract SHToken is ERC20, AccessControl {
     using SafeMath for uint256;
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
     address[] private users;
     mapping(address => uint256) private userBalances;
 
     constructor(string memory _name, string memory _symbol, address product) ERC20(_name, _symbol) {
         _grantRole(MINTER_ROLE, product);
+        _grantRole(BURNER_ROLE, product);
     }
 
     function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) {
@@ -23,7 +25,7 @@ contract SHToken is ERC20, AccessControl {
         _updateUserBalance(to, amount, true);
     }
 
-    function burn(address account, uint256 amount) external {
+    function burn(address account, uint256 amount) external onlyRole(BURNER_ROLE) {
         require(amount > 0, "Amount must be greater than zero");
         require(balanceOf(account) >= amount, "Insufficient balance");
         _burn(account, amount);
