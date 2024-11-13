@@ -181,7 +181,6 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     }
 
     function addOptionProfitList(address[] memory _userList, uint256[] memory _amountList) external whenNotPaused onlyAccepted onlyWhitelisted {
-        require(status == DataTypes.Status.Accepted, "Not accepted");
         uint256 _optionProfit = optionProfit;
         if (_optionProfit > 0) {
             for (uint256 i = 0; i < _userList.length; i++) {
