@@ -29,7 +29,7 @@ contract EventFunctions {
     );
 
     event DistributeFunds(
-        address indexed _exWallet,
+        address indexed _qredoDeribit,
         uint256 _optionRate,
         address indexed _pendleRouter,
         uint8 _yieldRate
@@ -68,7 +68,6 @@ contract EventFunctions {
     );
 
     event FundAccept(
-        uint256 _optionProfit,
         uint256 _timestamp
     );
 
@@ -96,5 +95,10 @@ contract EventFunctions {
 
     event UpdateCoupon(
         uint256 _newCoupon
+    );
+
+    event AddOptionProfitList(
+        address[] _userList,
+        uint256[] _amountList
     );
 }

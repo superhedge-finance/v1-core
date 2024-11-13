@@ -173,23 +173,25 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     function fundAccept() external whenNotPaused onlyWhitelisted {
         require(status == DataTypes.Status.Pending || status == DataTypes.Status.Mature, 
             "Neither mature nor pending status");
-        address[] memory totalHolders = IERC20Token(tokenAddress).getUsers();
+        // Then update status
+        status = DataTypes.Status.Accepted;
+        emit FundAccept(
+            block.timestamp
+        );
+    }
+
+    function addOptionProfitList(address[] memory _userList, uint256[] memory _amountList) external whenNotPaused onlyAccepted onlyWhitelisted {
+        require(status == DataTypes.Status.Accepted, "Not accepted");
         uint256 _optionProfit = optionProfit;
         if (_optionProfit > 0) {
-            uint256 totalSupply = IERC20(tokenAddress).totalSupply();
-            for (uint256 i = 0; i < totalHolders.length; i++) {
-                uint256 prevSupply = IERC20(tokenAddress).balanceOf(totalHolders[i]);
-                userInfo[totalHolders[i]].optionPayout += prevSupply * _optionProfit / totalSupply;
+            for (uint256 i = 0; i < _userList.length; i++) {
+                userInfo[_userList[i]].optionPayout += _amountList[i];
             }
             optionProfit = 0;
         }
-
-        // Then update status
-        status = DataTypes.Status.Accepted;
-
-        emit FundAccept(
-            _optionProfit, 
-            block.timestamp
+        emit AddOptionProfitList(
+            _userList,
+            _amountList
         );
     }
 
@@ -212,16 +214,13 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     /**
      * @dev Update users' coupon balance every week
      */
-    function coupon() external whenNotPaused onlyIssued onlyWhitelisted {
 
-        address[] memory totalHolders = IERC20Token(tokenAddress).getUsers();
-        for (uint256 i = 0; i < totalHolders.length; i++) {
-            uint256 prevSupply = IERC20(tokenAddress).balanceOf(totalHolders[i]);
-            uint256 _amount = prevSupply * issuanceCycle.coupon / 10000;
-            userInfo[totalHolders[i]].coupon += _amount;
+    function coupon(address[] memory _userList, uint256[] memory _amountList) external whenNotPaused onlyIssued onlyWhitelisted{
+        for (uint256 i = 0; i < _userList.length; i++) {
+            userInfo[_userList[i]].coupon += _amountList[i];
             emit Coupon(
-                    totalHolders[i],
-                    _amount
+                    _userList[i],
+                    _amountList[i]
                 );
         }
     }
