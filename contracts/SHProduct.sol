@@ -295,7 +295,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     function deposit(uint256 _amount, bool _type) external whenNotPaused nonReentrant onlyAccepted{
         require(_amount > 0, "Greater zero");
         uint256 decimals = _currencyDecimals();
-        
+        require(decimals > 0, "Decimals");
         uint256 amountToDeposit = _amount;
         if (_type == true) {
             amountToDeposit += userInfo[msg.sender].coupon + userInfo[msg.sender].optionPayout;
@@ -415,6 +415,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     function earlyWithdraw(uint256 _noOfBlock) external onlyIssued{
         uint256 exactPtIn = 0;
         uint256 decimals = _currencyDecimals();
+        require(decimals > 0, "Decimals");
         uint256 earlyWithdrawUser = ((_noOfBlock * issuanceCycle.underlyingSpotRef) *(issuanceCycle.optionMinOrderSize * 10**(decimals)))/10;
         uint256 currentToken = IERC20(tokenAddress).balanceOf(msg.sender);
 
