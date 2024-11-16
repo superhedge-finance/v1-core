@@ -90,7 +90,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         currency = _currency;
         currencyAddress = _currencyAddress;
         shFactory = msg.sender;
-
+        require(_issuanceCycle.coupon <= 100 && _issuanceCycle.coupon >= 0, "Less than 0 or greater than 100");
         require(_issuanceCycle.issuanceDate > block.timestamp, 
             "ID bigger");
         require(_issuanceCycle.maturityDate > _issuanceCycle.issuanceDate, 
@@ -231,6 +231,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     function updateCoupon(
         uint8 _newCoupon
     ) public LockedOrMature onlyManager {
+        require(_newCoupon <= 100 && _newCoupon >= 0, "Less than 0 or greater than 100");
         issuanceCycle.coupon = _newCoupon;
 
         emit UpdateCoupon(_newCoupon);
@@ -240,6 +241,16 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
      * @dev Update all parameters for next issuance cycle, called by only manager
      */
     function updateParameters(string memory _name, DataTypes.IssuanceCycle memory _issuanceCycle,address _router,address _market) external onlyAccepted onlyManager {
+
+        require(_issuanceCycle.issuanceDate > block.timestamp, "ID bigger");
+        require(_issuanceCycle.maturityDate > _issuanceCycle.issuanceDate, "MT bigger");
+        require(_issuanceCycle.tr1 <= 200 && _issuanceCycle.tr1 >= 100, "Less than 100 or greater than 200");
+        require(_issuanceCycle.tr2 <= 200 && _issuanceCycle.tr2 >= 100, "Less than 100 or greater than 200");
+
+        require(_issuanceCycle.strikePrice1 <= 1000000 && _issuanceCycle.strikePrice1 >= 0, "Less than 1000000 or greater than 0");
+        require(_issuanceCycle.strikePrice2 <= 1000000 && _issuanceCycle.strikePrice2 >= 0, "Less than 1000000 or greater than 0");
+        require(_issuanceCycle.strikePrice3 <= 1000000 && _issuanceCycle.strikePrice3 >= 0, "Less than 1000000 or greater than 0");
+        require(_issuanceCycle.strikePrice4 <= 1000000 && _issuanceCycle.strikePrice4 >= 0, "Less than 1000000 or greater than 0");
 
         name = _name;
         router = IPAllActionV3(_router);
@@ -266,6 +277,16 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
 
     function updateStructure(uint256 _strikePrice1, uint256 _strikePrice2, uint256 _strikePrice3, uint256 _strikePrice4,
     uint256 _tr1, uint256 _tr2, string memory _apy, uint8 _underlyingSpotRef) external onlyLocked onlyManager {
+
+        require(_underlyingSpotRef <= 1000000 && _underlyingSpotRef >= 0, "Less than 1000000 or greater than 0");
+        require(_tr1 <= 200 && _tr1 >= 100, "Less than 100 or greater than 200");
+        require(_tr2 <= 200 && _tr2 >= 100, "Less than 100 or greater than 200");
+
+        require(_strikePrice1 <= 1000000 && _strikePrice1 >= 0, "Less than 1000000 or greater than 0");
+        require(_strikePrice2 <= 1000000 && _strikePrice2 >= 0, "Less than 1000000 or greater than 0");
+        require(_strikePrice3 <= 1000000 && _strikePrice3 >= 0, "Less than 1000000 or greater than 0");
+        require(_strikePrice4 <= 1000000 && _strikePrice4 >= 0, "Less than 1000000 or greater than 0");
+
         issuanceCycle.strikePrice1 = _strikePrice1;
         issuanceCycle.strikePrice2 = _strikePrice2;
         issuanceCycle.strikePrice3 = _strikePrice3;
