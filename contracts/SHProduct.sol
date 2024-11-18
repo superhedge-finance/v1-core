@@ -246,6 +246,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         require(_issuanceCycle.maturityDate > _issuanceCycle.issuanceDate, "MT bigger");
         require(_issuanceCycle.tr1 <= 200 && _issuanceCycle.tr1 >= 100, "Less than 100 or greater than 200");
         require(_issuanceCycle.tr2 <= 200 && _issuanceCycle.tr2 >= 100, "Less than 100 or greater than 200");
+        require(bytes(_issuanceCycle.apy).length >= 2 && bytes(_issuanceCycle.apy).length <= 12, "Error apy length");
 
         require(_issuanceCycle.strikePrice1 <= 1000000 && _issuanceCycle.strikePrice1 >= 0, "Less than 1000000 or greater than 0");
         require(_issuanceCycle.strikePrice2 <= 1000000 && _issuanceCycle.strikePrice2 >= 0, "Less than 1000000 or greater than 0");
@@ -281,7 +282,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         require(_underlyingSpotRef <= 1000000 && _underlyingSpotRef >= 0, "Less than 1000000 or greater than 0");
         require(_tr1 <= 200 && _tr1 >= 100, "Less than 100 or greater than 200");
         require(_tr2 <= 200 && _tr2 >= 100, "Less than 100 or greater than 200");
-
+        require(bytes(_apy).length >= 2 && bytes(_apy).length <= 12, "Error apy length");
         require(_strikePrice1 <= 1000000 && _strikePrice1 >= 0, "Less than 1000000 or greater than 0");
         require(_strikePrice2 <= 1000000 && _strikePrice2 >= 0, "Less than 1000000 or greater than 0");
         require(_strikePrice3 <= 1000000 && _strikePrice3 >= 0, "Less than 1000000 or greater than 0");
