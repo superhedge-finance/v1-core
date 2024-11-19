@@ -2,19 +2,17 @@
 pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import "./interfaces/ISHProduct.sol";
 import "./interfaces/ISHFactory.sol";
 import "./interfaces/ISHTokenFactory.sol";
 import "./libraries/DataTypes.sol";
 import "./SHProduct.sol";
 
-
-
 /**
 * @notice Factory contract to create new products
 */
-contract SHFactory is ISHFactory, OwnableUpgradeable {
+contract SHFactory is ISHFactory, Ownable2StepUpgradeable {
 
    /// @notice Array of products' addresses
    address[] public products;
@@ -35,7 +33,8 @@ contract SHFactory is ISHFactory, OwnableUpgradeable {
     * @dev Initializes the contract setting the deployer as the initial owner.
     */
    function initialize(address _tokenFactory) public initializer {
-       __Ownable_init();
+        __Ownable2Step_init();
+        __Ownable_init();
        tokenFactory = _tokenFactory;
    }
 
