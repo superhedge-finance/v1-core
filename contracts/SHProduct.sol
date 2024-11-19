@@ -14,7 +14,12 @@ import "./libraries/DataTypes.sol";
 import "./libraries/Array.sol";
 import "./libraries/EventFunctions.sol";
 
-contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable,EventFunctions{
+/**
+ * @title SHProduct
+ * @notice A structured product contract that manages deposits, withdrawals, and yield generation
+ * @dev Inherits from StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable, and EventFunctions
+ */
+contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable, EventFunctions {
     IPPrincipalToken public PT;
     IPYieldToken public YT;
     IPAllActionV3 public router ;
@@ -64,6 +69,20 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     /// @notice restricting access to the automation functions
     mapping(address => bool) public whitelisted;
 
+    /**
+     * @notice Initializes the contract
+     * @param _name Product name
+     * @param _underlying Underlying asset name
+     * @param _currency Underlying asset token
+     * @param _manager Manager address
+     * @param _exWallet External wallet address
+     * @param _maxCapacity Maximum capacity of the product
+     * @param _issuanceCycle Issuance cycle parameters
+     * @param _router Router address
+     * @param _market Market address
+     * @param _tokenAddress ERC20 token address
+     * @param _currencyAddress Currency address
+     */
     function initialize(
         string memory _name,
         string memory _underlying,
@@ -102,49 +121,75 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         market = IPMarket(_market);
         (, PT,YT) = IPMarket(market).readTokens();
     }
-    
+
+    /**
+     * @notice Modifier for functions restricted to whitelisted addresses
+     */ 
     modifier onlyWhitelisted() {
         require(whitelisted[msg.sender], "Only whitelisted");
         _;
     }
 
-    /// @notice Modifier for functions restricted to manager
+    /**
+     * @notice Modifier for functions restricted to manager
+     */
     modifier onlyManager() {
         require(msg.sender == manager, "Not a manager");
         _;
     }
 
+    /**
+     * @notice Modifier for functions restricted to the admin
+     */
     modifier onlyAdmin() {
         require(msg.sender == admin, "Not admin");
         _;
     }
 
+    /**
+     * @notice Modifier for functions restricted to products in Accepted status
+     */
     modifier onlyAccepted() {
         require(status == DataTypes.Status.Accepted, "Not accepted");
         _;
     }
 
+    /**
+     * @notice Modifier for functions restricted to products in Locked status
+     */
     modifier onlyLocked() {
         require(status == DataTypes.Status.Locked, "Not locked");
         _;
     }
 
+    /**
+     * @notice Modifier for functions restricted to products in Issued status
+     */
     modifier onlyIssued() {
         require(status == DataTypes.Status.Issued, "Not issued");
         _;
     }
 
+    /**
+     * @notice Modifier for functions restricted to products in Mature status
+     */
     modifier onlyMature() {
         require(status == DataTypes.Status.Mature, "Not mature");
         _;
     }
 
+    /**
+     * @notice Modifier for functions restricted to products in Locked or Mature status
+     */
     modifier LockedOrMature() {
         require(status == DataTypes.Status.Locked || status == DataTypes.Status.Mature, 
             "Neither mature nor locked");
         _;
     }
 
+    /**
+     * @notice Modifier for functions restricted to products in Locked, Mature, or Accepted status
+     */
     modifier AcceptedOrLockedOrMature() {
         require(status == DataTypes.Status.Locked || status == DataTypes.Status.Mature || status == DataTypes.Status.Accepted, 
             "Neither mature nor locked");
@@ -166,10 +211,20 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         delete whitelisted[_account];
     }
 
+    /**
+     * @notice Adds an admin to the contract
+     * @param _account Address of the admin to add
+     * @dev Only callable by manager
+     */
     function addAdmin(address _account) external onlyManager {
         admin = _account;
     }
 
+    /**
+     * @notice Changes the product status to Accepted
+     * @dev Only callable by whitelisted addresses when contract is not paused
+     * @dev Product must be in Pending or Mature status
+     */
     function fundAccept() external whenNotPaused onlyWhitelisted {
         require(status == DataTypes.Status.Pending || status == DataTypes.Status.Mature, 
             "Neither mature nor pending status");
@@ -180,6 +235,12 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         );
     }
 
+    /**
+     * @notice Distributes option profits to a list of users
+     * @param _userList Array of user addresses to receive profits
+     * @param _amountList Array of amounts to distribute to each user
+     * @dev Only callable by whitelisted addresses when contract is not paused and in Accepted status
+     */
     function addOptionProfitList(address[] memory _userList, uint256[] memory _amountList) external whenNotPaused onlyAccepted onlyWhitelisted {
         uint256 _optionProfit = optionProfit;
         if (_optionProfit > 0) {
@@ -194,26 +255,40 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         );
     }
 
+    /**
+     * @notice Changes the product status to Locked
+     * @dev Only callable by whitelisted addresses when contract is not paused and in Accepted status
+     */
     function fundLock() external whenNotPaused onlyAccepted onlyWhitelisted {
         status = DataTypes.Status.Locked;
 
         emit FundLock(block.timestamp);
     }
 
+    /**
+     * @notice Changes the product status to Issued
+     * @dev Only callable by whitelisted addresses when contract is not paused and in Locked status
+     */
     function issuance() external whenNotPaused onlyLocked onlyWhitelisted {
         status = DataTypes.Status.Issued;
         emit Issuance(block.timestamp);
     }
 
+    /**
+     * @notice Changes the product status to Mature
+     * @dev Only callable by whitelisted addresses when contract is not paused and in Issued status
+     */
     function mature() external whenNotPaused onlyIssued onlyWhitelisted {
         status = DataTypes.Status.Mature;
         emit Mature(block.timestamp);
     }
 
     /**
-     * @dev Update users' coupon balance every week
+     * @notice Updates users' coupon balances
+     * @param _userList Array of user addresses to receive coupons
+     * @param _amountList Array of coupon amounts to distribute
+     * @dev Only callable by whitelisted addresses when contract is not paused and in Issued status
      */
-
     function coupon(address[] memory _userList, uint256[] memory _amountList) external whenNotPaused onlyIssued onlyWhitelisted{
         for (uint256 i = 0; i < _userList.length; i++) {
             userInfo[_userList[i]].coupon += _amountList[i];
@@ -225,8 +300,10 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     }
 
     /**
-     * @dev Updates only coupon parameter
-     * @param _newCoupon weekly coupon rate in basis point; e.g. 0.10%/wk => 10
+     * @notice Updates the coupon rate for the product
+     * @param _newCoupon New weekly coupon rate in basis points (e.g., 10 = 0.10%/week)
+     * @dev Only callable by manager when product is in Locked or Mature status
+     * @dev Coupon rate must be between 0 and 100
      */
     function updateCoupon(
         uint8 _newCoupon
@@ -238,7 +315,12 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     }
 
     /**
-     * @dev Update all parameters for next issuance cycle, called by only manager
+     * @notice Updates all parameters for the next issuance cycle
+     * @param _name New name for the product
+     * @param _issuanceCycle New issuance cycle parameters
+     * @param _router New router address
+     * @param _market New market address
+     * @dev Only callable by manager when product is in Accepted status
      */
     function updateParameters(string memory _name, DataTypes.IssuanceCycle memory _issuanceCycle,address _router,address _market) external onlyAccepted onlyManager {
 
@@ -276,6 +358,18 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         );
     }
 
+    /**
+     * @notice Updates the product structure parameters
+     * @param _strikePrice1 First strike price
+     * @param _strikePrice2 Second strike price
+     * @param _strikePrice3 Third strike price
+     * @param _strikePrice4 Fourth strike price
+     * @param _tr1 First target rate
+     * @param _tr2 Second target rate
+     * @param _apy APY string
+     * @param _underlyingSpotRef Underlying spot reference price
+     * @dev Only callable by manager when product is in Locked status
+     */
     function updateStructure(uint256 _strikePrice1, uint256 _strikePrice2, uint256 _strikePrice3, uint256 _strikePrice4,
     uint256 _tr1, uint256 _tr2, string memory _apy, uint8 _underlyingSpotRef) external onlyLocked onlyManager {
 
@@ -310,11 +404,13 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     }
 
     /**
-     * @dev Deposits the USDC into the structured product and mint ERC20 Token
-     * @param _amount is the amount of USDC to deposit
-     * @param _type True: include profit, False: without profit
+     * @notice Deposits currency into the structured product and mints ERC20 tokens
+     * @param _amount Amount of currency to deposit
+     * @param _type If true, includes user's accumulated profit in deposit
+     * @dev Only callable when contract is not paused and in Accepted status
+     * @dev Amount must be greater than 0 and not exceed remaining capacity
      */
-    function deposit(uint256 _amount, bool _type) external whenNotPaused nonReentrant onlyAccepted{
+    function deposit(uint256 _amount, bool _type) external whenNotPaused nonReentrant onlyAccepted {
         require(_amount > 0, "Greater zero");
         uint256 decimals = _currencyDecimals();
         require(decimals > 0, "Decimals");
@@ -339,7 +435,9 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     }
 
     /**
-     * @dev Withdraws the principal from the structured product
+     * @notice Withdraws principal by burning product tokens
+     * @dev Only callable when product is in Accepted status
+     * @dev Burns user's entire token balance and returns equivalent currency
      */
     function withdrawPrincipal() external nonReentrant onlyAccepted {
         uint256 currentToken = IERC20(tokenAddress).balanceOf(msg.sender);
@@ -356,7 +454,9 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     }
 
     /**
-     * @notice Withdraws user's coupon payout
+     * @notice Withdraws accumulated coupon payments
+     * @dev Transfers all accumulated coupon payments to user
+     * @dev Requires positive coupon balance and sufficient contract balance
      */
     function withdrawCoupon() external nonReentrant {
         uint256 _couponAmount = userInfo[msg.sender].coupon;
@@ -369,9 +469,11 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         emit WithdrawCoupon(msg.sender, _couponAmount);
     }
 
-    // /**
-    //  * @notice Withdraws user's option payout
-    //  */
+    /**
+     * @notice Withdraws accumulated option payouts
+     * @dev Transfers all accumulated option payouts to user
+     * @dev Requires positive option payout balance and sufficient contract balance
+     */
     function withdrawOption() external nonReentrant {
         uint256 _optionAmount = userInfo[msg.sender].optionPayout;
         require(_optionAmount > 0, "No OP");
@@ -384,11 +486,12 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     }
 
     /**
-     * @notice Distributes locked funds
+     * @notice Distributes locked funds between yield generation and options
+     * @param _yieldRate Percentage of funds to allocate to yield generation (0-100)
+     * @dev Only callable by manager when product is in Locked status
+     * @dev Remaining percentage (100 - _yieldRate) goes to options wallet
      */
-    function distributeFunds(
-        uint8 _yieldRate
-    ) external onlyManager onlyLocked {
+    function distributeFunds(uint8 _yieldRate) external onlyManager onlyLocked {
         require(!isDistributed, "Already distributed");
         require(_yieldRate <= 100, "Less than 100");
         uint8 optionRate = 100 - _yieldRate;
@@ -413,11 +516,11 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     }
 
     /**
-     * @notice Redeem yield from Pendle protocol(DeFi lending protocol)
+     * @notice Redeems yield tokens from Pendle protocol
+     * @dev Only callable by manager when product is in Mature status
+     * @dev Requires funds to have been previously distributed
      */
-
-    function redeemYield(
-    ) external onlyManager onlyMature {
+    function redeemYield() external onlyManager onlyMature {
         require(isDistributed, "Not distributed");
         uint256 exactPtIn = IERC20(PT).balanceOf(address(this));
         uint256 netTokenOut;
@@ -434,7 +537,13 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         emit RedeemYield(address(router), netTokenOut);
     }
 
-    function earlyWithdraw(uint256 _noOfBlock) external onlyIssued{
+    /**
+     * @notice Allows users to withdraw funds early
+     * @param _noOfBlock Number of blocks to withdraw early
+     * @dev Only callable when product is in Issued status
+     * @dev Burns corresponding tokens and returns proportional amount of underlying assets
+     */
+    function earlyWithdraw(uint256 _noOfBlock) external onlyIssued {
         uint256 exactPtIn = 0;
         uint256 decimals = _currencyDecimals();
         require(decimals > 0, "Decimals");
@@ -459,8 +568,13 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         emit EarlyWithdraw(msg.sender, _noOfBlock, exactPtIn, earlyWithdrawUser);
     }
 
-    function storageOptionPosition(address[] memory _userList, uint256[] memory _amountList) external onlyIssued onlyAdmin
-    {
+    /**
+     * @notice Stores option positions for users
+     * @param _userList Array of user addresses
+     * @param _amountList Array of option position amounts
+     * @dev Only callable by admin when product is in Issued status
+     */
+    function storageOptionPosition(address[] memory _userList, uint256[] memory _amountList) external onlyIssued onlyAdmin {
         for (uint256 i = 0; i < _userList.length; i++) 
         {
             UserOptionPositions.push(UserOptionPosition({
@@ -471,6 +585,11 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         }
     }
 
+    /**
+     * @notice Pays out option positions to users
+     * @dev Only callable by manager when product is in Issued status
+     * @dev Transfers stored option positions to respective users
+     */
     function userOptionPositionPaid() external onlyIssued onlyManager {
 
         currency.safeTransferFrom(msg.sender, address(this), totalOptionPosition);
@@ -486,7 +605,9 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     }
 
     /**
-     * @dev Transfers option profit from a ex wallet, called by an owner
+     * @notice Allows external wallet to transfer option profits to the contract
+     * @param _optionProfit Amount of option profit to transfer
+     * @dev Only callable by external wallet when product is in Mature status
      */
     function redeemOptionPayout(uint256 _optionProfit) external onlyMature {
         require(msg.sender == exWallet, "Not a ex wallet");
@@ -497,53 +618,61 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     }
 
     /**
-     * @notice Returns the user's principal balance
-     * Before auto-rolling or fund lock, users can have both tokens so total supply is the sum of 
-     * previous supply and current supply
+     * @notice Gets the principal balance of a user
+     * @param _user Address of the user
+     * @return uint256 Amount of principal tokens held by the user
      */
     function principalBalance(address _user) public view returns (uint256) {
         return IERC20(tokenAddress).balanceOf(_user);
     }
 
     /**
-     * @notice Returns the user's coupon payout
+     * @notice Gets the coupon balance of a user
+     * @param _user Address of the user
+     * @return uint256 Amount of unclaimed coupon payments
      */
     function couponBalance(address _user) external view returns (uint256) {
         return userInfo[_user].coupon;
     }
 
     /**
-     * @notice Returns the user's option payout
+     * @notice Gets the option payout balance of a user
+     * @param _user Address of the user
+     * @return uint256 Amount of unclaimed option payouts
      */
     function optionBalance(address _user) external view returns (uint256) {
         return userInfo[_user].optionPayout;
     }
 
     /**
-     * @notice Returns the product's total USDC balance
+     * @notice Gets the total balance of the underlying currency in the contract
+     * @return uint256 Total balance of the contract
      */
     function totalBalance() public view returns (uint256) {
         return currency.balanceOf(address(this));
     }
 
     /**
-     * @notice Returns the decimal of underlying asset (USDC)
+     * @notice Gets the number of decimals for the underlying currency
+     * @return uint256 Number of decimals
+     * @dev Internal helper function
      */
     function _currencyDecimals() internal view returns (uint256) {
         return IERC20MetadataUpgradeable(address(currency)).decimals();
     }
 
     /**
-     * @dev Pause the product
+     * @notice Pauses all contract operations
+     * @dev Only callable by manager
      */
     function pause() external onlyManager {
         _pause();
     }
 
     /**
-     * @dev Unpause the product
+     * @notice Unpauses contract operations
+     * @dev Only callable by manager
      */
-
     function unpause() external onlyManager {
         _unpause();
     }
