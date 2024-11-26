@@ -63,7 +63,6 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     IERC20Upgradeable public currency;
     bool public isDistributed;
 
-    /// @notice restricting access to the automation functions
     mapping(address => bool) public whitelisted;
 
     /**
@@ -225,7 +224,6 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     function fundAccept() external whenNotPaused onlyWhitelisted {
         require(status == DataTypes.Status.Pending || status == DataTypes.Status.Mature, 
             "Neither mature nor pending status");
-        // Then update status
         status = DataTypes.Status.Accepted;
         emit FundAccept(
             block.timestamp
@@ -436,9 +434,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
      */
     function withdrawPrincipal() external nonReentrant onlyAccepted {
         uint256 currentToken = IERC20(tokenAddress).balanceOf(msg.sender);
-
         IERC20Token(tokenAddress).burn(msg.sender,currentToken);
-        // IERC20(tokenAddress).transferFrom(msg.sender, deadAddress, currentToken);
         currency.safeTransfer(msg.sender, currentToken);
         currentCapacity -= currentToken;
 
@@ -522,8 +518,6 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         if (exactPtIn > 0)
         {
             IERC20(PT).approve(address(router), exactPtIn);
-            // (netTokenOut,,) = router.swapExactPtForToken(
-            // address(this), address(market), exactPtIn, createTokenOutputStruct(currencyAddress, 0), emptyLimit);
             (netTokenOut,) = router.redeemPyToToken(address(this), address(YT), exactPtIn, createTokenOutputStruct(currencyAddress, 0)); 
         }
 
