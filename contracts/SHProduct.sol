@@ -415,7 +415,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         uint256 decimals = _currencyDecimals();
         require(decimals > 0, "Decimals");
         uint256 amountToDeposit = _amount;
-        if (_type == true) {
+        if (_type) {
             amountToDeposit += userInfo[msg.sender].coupon + userInfo[msg.sender].optionPayout;
         }
         require((maxCapacity * 10 ** decimals) >= (currentCapacity + amountToDeposit), "Product is full");
