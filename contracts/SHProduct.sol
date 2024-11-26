@@ -8,10 +8,8 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@pendle/core-v2/contracts/interfaces/IPAllActionV3.sol";
 import "@pendle/core-v2/contracts/interfaces/IPMarket.sol";
 import "./StructGen.sol";
-import "./interfaces/ISHProduct.sol";
 import "./interfaces/IERC20Token.sol";
 import "./libraries/DataTypes.sol";
-import "./libraries/Array.sol";
 import "./libraries/EventFunctions.sol";
 
 /**
@@ -27,7 +25,6 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     IPMarket public market;
 
     using SafeERC20Upgradeable for IERC20Upgradeable;
-    using Array for address[];
     uint256 public netPtOut;
 
     struct UserInfo {
