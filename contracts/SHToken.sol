@@ -23,7 +23,6 @@ contract SHToken is ERC20, AccessControl {
 
     function burn(address account, uint256 amount) external onlyRole(BURNER_ROLE) {
         require(amount > 0, "Amount must be greater than zero");
-        require(balanceOf(account) >= amount, "Insufficient balance");
         _burn(account, amount);
     }
 
