@@ -29,6 +29,7 @@ contract SHToken is ERC20, AccessControl {
         _burn(account, amount);
     }
 
+    // Override decimals to return 6
     function decimals() public view virtual override returns (uint8) {
         return 6;
     }

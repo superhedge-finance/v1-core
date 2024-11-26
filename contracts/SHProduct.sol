@@ -417,8 +417,6 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         }
         require((maxCapacity * 10 ** decimals) >= (currentCapacity + amountToDeposit), "Product is full");
 
-        uint256 supply = amountToDeposit / (1 * 10 ** decimals);
-
         currency.safeTransferFrom(msg.sender, address(this), _amount);
         IERC20Token(tokenAddress).mint(msg.sender,_amount);
 
@@ -428,7 +426,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
             userInfo[msg.sender].optionPayout = 0;
         }
 
-        emit Deposit(msg.sender, _amount,supply);
+        emit Deposit(msg.sender, _amount);
     }
 
     /**

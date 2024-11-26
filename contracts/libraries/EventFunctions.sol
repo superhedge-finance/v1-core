@@ -4,8 +4,7 @@ pragma solidity ^0.8.9;
 contract EventFunctions {
     event Deposit(
         address indexed _user,
-        uint256 _amount,
-        uint256 _supply
+        uint256 _amount
     );
 
     event WithdrawPrincipal(
