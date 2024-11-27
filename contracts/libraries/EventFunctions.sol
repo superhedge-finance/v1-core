@@ -65,22 +65,6 @@ contract EventFunctions {
         string _apy,
         uint8 _underlyingSpotRef
     );
-
-    event FundAccept(
-        uint256 _timestamp
-    );
-
-    event FundLock(
-        uint256 _timestamp
-    );
-
-    event Issuance(
-        uint256 _timestamp
-    );
-
-    event Mature(
-        uint256 _timestamp
-    );
     
     event Coupon(
         address indexed _user,
