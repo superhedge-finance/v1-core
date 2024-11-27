@@ -230,7 +230,7 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
         require(status == DataTypes.Status.Pending || status == DataTypes.Status.Mature, 
             "Neither mature nor pending status");
         status = DataTypes.Status.Accepted;
-        emit FundAccept(block.timestamp);
+        emit FundAccept();
     }
 
     /**
@@ -260,7 +260,7 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
      */
     function fundLock() external whenNotPaused onlyAccepted onlyWhitelisted {
         status = DataTypes.Status.Locked;
-        emit FundLock(block.timestamp);
+        emit FundLock();
     }
 
     /**
@@ -269,7 +269,7 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
      */
     function issuance() external whenNotPaused onlyLocked onlyWhitelisted {
         status = DataTypes.Status.Issued;
-        emit Issuance(block.timestamp);
+        emit Issuance();
     }
 
     /**
@@ -278,7 +278,7 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
      */
     function mature() external whenNotPaused onlyIssued onlyWhitelisted {
         status = DataTypes.Status.Mature;
-        emit Mature(block.timestamp);
+        emit Mature();
     }
 
     /**
