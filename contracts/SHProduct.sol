@@ -240,8 +240,9 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
      */
     function addOptionProfitList(address[] memory _userList, uint256[] memory _amountList) external whenNotPaused onlyAccepted onlyWhitelisted {
         uint256 _optionProfit = optionProfit;
+        uint256 length = _userList.length;
         if (_optionProfit > 0) {
-            for (uint256 i = 0; i < _userList.length; i++) {
+            for (uint256 i = 0; i < length; i++) {
                 userInfo[_userList[i]].optionPayout += _amountList[i];
             }
             optionProfit = 0;
@@ -283,7 +284,8 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
      * @dev Only callable by whitelisted addresses when contract is not paused and in Issued status
      */
     function coupon(address[] memory _userList, uint256[] memory _amountList) external whenNotPaused onlyIssued onlyWhitelisted{
-        for (uint256 i = 0; i < _userList.length; i++) {
+        uint256 length = _userList.length;
+        for (uint256 i = 0; i < length; i++) {
             userInfo[_userList[i]].coupon += _amountList[i];
             emit Coupon(
                     _userList[i],
@@ -576,7 +578,8 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
      */
     function userOptionPositionPaid() external onlyIssued onlyManager {
         currency.safeTransferFrom(msg.sender, address(this), totalOptionPosition);
-        for (uint256 i = 0; i < UserOptionPositions.length; i++) 
+        uint256 length = UserOptionPositions.length;
+        for (uint256 i = 0; i < length; i++) 
         {
             currency.safeTransfer(UserOptionPositions[i].userAddress, UserOptionPositions[i].value);
         }
