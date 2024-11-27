@@ -419,7 +419,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         IERC20Token(tokenAddress).mint(msg.sender,_amount);
 
         currentCapacity += amountToDeposit;
-        if (_type == true) {
+        if (_type) {
             userInfo[msg.sender].coupon = 0;
             userInfo[msg.sender].optionPayout = 0;
         }
