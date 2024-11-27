@@ -8,6 +8,7 @@ contract SHToken is ERC20, AccessControl {
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
+    uint8 public constant DECIMALS = 6;
 
     constructor(string memory _name, string memory _symbol, address _product) ERC20(_name, _symbol) {
         _grantRole(MINTER_ROLE, _product);
@@ -25,7 +26,7 @@ contract SHToken is ERC20, AccessControl {
 
     // Override decimals to return 6
     function decimals() public pure virtual override returns (uint8) {
-        return 6;
+        return DECIMALS;
     }
 
     function transfer(address recipient, uint256 amount) public override returns (bool) {
