@@ -403,7 +403,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
      * @dev Only callable when contract is not paused and in Accepted status
      * @dev Amount must be greater than 0 and not exceed remaining capacity
      */
-    function deposit(uint256 _amount, bool _type) external whenNotPaused nonReentrant onlyAccepted {
+    function deposit(uint256 _amount, bool _type) external nonReentrant whenNotPaused onlyAccepted {
         require(_amount > 0, "Greater zero");
         uint256 decimals = _currencyDecimals();
         require(decimals > 0, "Decimals");
