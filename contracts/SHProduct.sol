@@ -564,7 +564,8 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
      * @dev Only callable by admin when product is in Issued status
      */
     function storageOptionPosition(address[] memory _userList, uint256[] memory _amountList) external onlyIssued onlyAdmin {
-        for (uint256 i = 0; i < _userList.length; i++) 
+        uint256 length = _userList.length;
+        for (uint256 i = 0; i < length; i++) 
         {
             UserOptionPositions.push(UserOptionPosition({
                     userAddress: _userList[i],
