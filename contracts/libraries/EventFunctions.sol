@@ -3,98 +3,98 @@ pragma solidity 0.8.23;
 
 contract EventFunctions {
     event Deposit(
-        address indexed _user,
-        uint256 _amount
+        address indexed user,
+        uint256 amount
     );
 
     event WithdrawPrincipal(
-        address indexed _user,
-        uint256 _amount
+        address indexed user,
+        uint256 amount
     );
 
     event WithdrawCoupon(
-        address indexed _user,
-        uint256 _amount
+        address indexed user,
+        uint256 amount
     );
 
     event WithdrawOption(
-        address indexed _user,
-        uint256 _amount
+        address indexed user,
+        uint256 amount
     );
 
     event RedeemOptionPayout(
-        address indexed _from,
-        uint256 _amount
+        address indexed from,
+        uint256 amount
     );
 
     event DistributeFunds(
-        address indexed _qredoDeribit,
-        uint256 _optionRate,
-        address indexed _pendleRouter,
-        uint8 _yieldRate
+        address indexed qredoDeribit,
+        uint256 optionRate,
+        address indexed pendleRouter,
+        uint8 yieldRate
     );
     
     event RedeemYield(
-        address _pendleRouter,
-        uint256 _amount
+        address pendleRouter,
+        uint256 amount
     );
 
     event EarlyWithdraw(
-        address indexed _user,
-        uint256 _noOfBlock, 
-        uint256 _exactPtIn, 
-        uint256 _earlyWithdrawUser
+        address indexed user,
+        uint256 noOfBlock, 
+        uint256 exactPtIn, 
+        uint256 earlyWithdrawUser
     );
 
     event UserOptionPositionPaid(uint256 totalOptionPosition);
 
     /// @notice Event emitted when new issuance cycle is updated
     event UpdateParameters(
-        string _name,
-        address _router, 
-        address _market
+        string name,
+        address router, 
+        address market
     );
 
     event UpdateStructure(
-        uint256 _strikePrice1,
-        uint256 _strikePrice2,
-        uint256 _strikePrice3,
-        uint256 _strikePrice4,
-        uint256 _tr1,
-        uint256 _tr2,
-        string _apy,
-        uint8 _underlyingSpotRef
+        uint256 strikePrice1,
+        uint256 strikePrice2,
+        uint256 strikePrice3,
+        uint256 strikePrice4,
+        uint256 tr1,
+        uint256 tr2,
+        string apy,
+        uint8 underlyingSpotRef
     );
     
     event Coupon(
-        address indexed _user,
-        uint256 _amount
+        address indexed user,
+        uint256 amount
     );
 
     event OptionPayout(
-        address indexed _user,
-        uint256 _amount
+        address indexed user,
+        uint256 amount
     );
 
     event UpdateCoupon(
-        uint256 _newCoupon
+        uint256 newCoupon
     );
 
     event AddOptionProfitList(
-        address[] _userList,
-        uint256[] _amountList
+        address[] userList,
+        uint256[] amountList
     );
 
     event WhiteList(
-        address indexed _account
+        address indexed account
     );
 
     event RemoveFromWhiteList(
-        address indexed _account
+        address indexed account
     );
 
     event AddAdmin(
-        address indexed _account
+        address indexed account
     );
 }
 

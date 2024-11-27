@@ -9,11 +9,9 @@ contract SHToken is ERC20, AccessControl {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
-    mapping(address => uint256) private userBalances;
-
-    constructor(string memory _name, string memory _symbol, address product) ERC20(_name, _symbol) {
-        _grantRole(MINTER_ROLE, product);
-        _grantRole(BURNER_ROLE, product);
+    constructor(string memory _name, string memory _symbol, address _product) ERC20(_name, _symbol) {
+        _grantRole(MINTER_ROLE, _product);
+        _grantRole(BURNER_ROLE, _product);
     }
 
     function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) {
@@ -26,7 +24,7 @@ contract SHToken is ERC20, AccessControl {
     }
 
     // Override decimals to return 6
-    function decimals() public view virtual override returns (uint8) {
+    function decimals() public pure virtual override returns (uint8) {
         return 6;
     }
 

@@ -17,10 +17,10 @@ import "./libraries/EventFunctions.sol";
  * @notice A structured product contract that manages deposits, withdrawals, and yield generation
  * @dev Inherits from StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable, and EventFunctions
  */
-contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable, EventFunctions {
+contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,EventFunctions {
     IPPrincipalToken public PT;
     IPYieldToken public YT;
-    IPAllActionV3 public router ;
+    IPAllActionV3 public router;
     address public currencyAddress;
     IPMarket public market;
 
@@ -91,7 +91,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         address _market,
         address _tokenAddress,
         address _currencyAddress
-    ) public initializer {
+    ) external initializer {
         __ReentrancyGuard_init();
         __Pausable_init();
 
@@ -300,7 +300,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
      */
     function updateCoupon(
         uint8 _newCoupon
-    ) public LockedOrMature onlyManager {
+    ) external LockedOrMature onlyManager {
         require(_newCoupon <= 100 && _newCoupon >= 0, "Less than 0 or greater than 100");
         issuanceCycle.coupon = _newCoupon;
 
@@ -606,7 +606,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
      * @param _user Address of the user
      * @return uint256 Amount of principal tokens held by the user
      */
-    function principalBalance(address _user) public view returns (uint256) {
+    function principalBalance(address _user) external view returns (uint256) {
         return IERC20(tokenAddress).balanceOf(_user);
     }
 

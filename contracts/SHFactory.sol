@@ -32,7 +32,7 @@ contract SHFactory is ISHFactory, Ownable2StepUpgradeable {
    /**
     * @dev Initializes the contract setting the deployer as the initial owner.
     */
-   function initialize(address _tokenFactory) public initializer {
+   function initialize(address _tokenFactory) external initializer {
         __Ownable2Step_init();
         __Ownable_init();
        tokenFactory = _tokenFactory;
