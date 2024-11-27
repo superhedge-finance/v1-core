@@ -3,7 +3,6 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
-import "./interfaces/ISHProduct.sol";
 import "./interfaces/ISHFactory.sol";
 import "./interfaces/ISHTokenFactory.sol";
 import "./libraries/DataTypes.sol";
