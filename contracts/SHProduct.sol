@@ -412,15 +412,13 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
             amountToDeposit += userInfo[msg.sender].coupon + userInfo[msg.sender].optionPayout;
         }
         require((maxCapacity * 10 ** decimals) >= (currentCapacity + amountToDeposit), "Product is full");
-
-        currency.safeTransferFrom(msg.sender, address(this), _amount);
-        IERC20Token(tokenAddress).mint(msg.sender,_amount);
-
         currentCapacity += amountToDeposit;
         if (_type) {
             userInfo[msg.sender].coupon = 0;
             userInfo[msg.sender].optionPayout = 0;
         }
+        currency.safeTransferFrom(msg.sender, address(this), _amount);
+        IERC20Token(tokenAddress).mint(msg.sender,_amount);
 
         emit Deposit(msg.sender, _amount);
     }
@@ -483,8 +481,8 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     function distributeFunds(uint8 _yieldRate) external onlyManager onlyLocked {
         require(!isDistributed, "Already distributed");
         require(_yieldRate <= 100, "Less than 100");
+        isDistributed = true;
         uint8 optionRate = 100 - _yieldRate;
-
         uint256 optionAmount;
         if (optionRate > 0) {
             optionAmount = currentCapacity * optionRate / 100;
@@ -498,8 +496,6 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
             address(this), address(market), 0, defaultApprox, createTokenInputStruct(currencyAddress, yieldAmount), emptyLimit
         );
         netPtOut = _netPtOut;
-    
-        isDistributed = true;
         
         emit DistributeFunds(exWallet, optionRate, address(router), _yieldRate);
     }
@@ -513,14 +509,14 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
         require(isDistributed, "Not distributed");
         uint256 exactPtIn = IERC20(PT).balanceOf(address(this));
         uint256 netTokenOut;
+        netPtOut = 0;
+        isDistributed = false;
         if (exactPtIn > 0)
         {
             IERC20(PT).approve(address(router), exactPtIn);
             (netTokenOut,) = router.redeemPyToToken(address(this), address(YT), exactPtIn, createTokenOutputStruct(currencyAddress, 0)); 
         }
-
-        netPtOut = 0;
-        isDistributed = false;
+        
         emit RedeemYield(address(router), netTokenOut);
     }
 
@@ -544,13 +540,13 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
             exactPtIn  = (earlyWithdrawUser * netPtOut / currentCapacity);  
         }
 
+        netPtOut-=exactPtIn; 
+        currentCapacity -= earlyWithdrawUser;
+        totalNumberOfBlocks+=_noOfBlock;
         IERC20Token(tokenAddress).burn(msg.sender,earlyWithdrawUser);
         IERC20(PT).approve(address(router), exactPtIn);
         (uint256 netTokenOut,,) = router.swapExactPtForToken(
         address(this), address(market), exactPtIn, createTokenOutputStruct(currencyAddress, 0), emptyLimit);
-        netPtOut-=exactPtIn; 
-        currentCapacity -= earlyWithdrawUser;
-        totalNumberOfBlocks+=_noOfBlock;
         currency.safeTransfer(msg.sender, netTokenOut);
         emit EarlyWithdraw(msg.sender, _noOfBlock, exactPtIn, earlyWithdrawUser);
     }
