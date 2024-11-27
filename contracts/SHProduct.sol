@@ -179,7 +179,7 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
      */
     modifier LockedOrMature() {
         require(status == DataTypes.Status.Locked || status == DataTypes.Status.Mature, 
-            "Neither mature nor locked");
+            "Neither Locked nor Mature");
         _;
     }
 
@@ -188,7 +188,7 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
      */
     modifier AcceptedOrLockedOrMature() {
         require(status == DataTypes.Status.Locked || status == DataTypes.Status.Mature || status == DataTypes.Status.Accepted, 
-            "Neither mature nor locked");
+            "Neither Accepted nor Locked nor Mature");
         _;
     }
 
@@ -196,7 +196,7 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
      * @notice Whitelists the additional accounts to call the automation functions.
      */
     function whitelist(address _account) external onlyManager {
-        require(!whitelisted[_account], "Whitelisted");
+        require(!whitelisted[_account], "Account is already whitelisted");
         whitelisted[_account] = true;
         emit WhiteList(
             _account
@@ -447,8 +447,8 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
      */
     function withdrawCoupon() external nonReentrant {
         uint256 _couponAmount = userInfo[msg.sender].coupon;
-        require(_couponAmount > 0, "No CP");
-        require(totalBalance() >= _couponAmount, "Balance");
+        require(_couponAmount > 0, "No coupon available");
+        require(totalBalance() >= _couponAmount, "Insufficient contract balance");
         
         currency.safeTransfer(msg.sender, _couponAmount);
         userInfo[msg.sender].coupon = 0;
@@ -463,8 +463,8 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
      */
     function withdrawOption() external nonReentrant {
         uint256 _optionAmount = userInfo[msg.sender].optionPayout;
-        require(_optionAmount > 0, "No OP");
-        require(totalBalance() >= _optionAmount, "Balance");
+        require(_optionAmount > 0, "No option payout available");
+        require(totalBalance() >= _optionAmount, "Insufficient contract balance");
         
         currency.safeTransfer(msg.sender, _optionAmount);
         userInfo[msg.sender].optionPayout = 0;
@@ -575,9 +575,7 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
      * @dev Transfers stored option positions to respective users
      */
     function userOptionPositionPaid() external onlyIssued onlyManager {
-
         currency.safeTransferFrom(msg.sender, address(this), totalOptionPosition);
-        
         for (uint256 i = 0; i < UserOptionPositions.length; i++) 
         {
             currency.safeTransfer(UserOptionPositions[i].userAddress, UserOptionPositions[i].value);
@@ -594,10 +592,9 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
      * @dev Only callable by external wallet when product is in Mature status
      */
     function redeemOptionPayout(uint256 _optionProfit) external onlyMature {
-        require(msg.sender == exWallet, "Not a ex wallet");
+        require(msg.sender == exWallet, "Not an exwallet");
         currency.safeTransferFrom(msg.sender, address(this), _optionProfit);
         optionProfit = _optionProfit;
-
         emit RedeemOptionPayout(msg.sender, _optionProfit);
     }
 
