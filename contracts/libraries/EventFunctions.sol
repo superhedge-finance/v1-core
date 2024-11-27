@@ -2,6 +2,23 @@
 pragma solidity 0.8.23;
 
 contract EventFunctions {
+
+    event FundAccept(
+        uint256 timestamp
+    );
+
+    event FundLock(
+        uint256 timestamp
+    );
+
+    event Issuance(
+        uint256 timestamp
+    );
+
+    event Mature(
+        uint256 timestamp
+    );
+
     event Deposit(
         address indexed user,
         uint256 amount
