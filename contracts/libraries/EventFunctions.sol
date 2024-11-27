@@ -100,4 +100,17 @@ contract EventFunctions {
         address[] _userList,
         uint256[] _amountList
     );
+
+    event WhiteList(
+        address indexed _account
+    );
+
+    event RemoveFromWhiteList(
+        address indexed _account
+    );
+
+    event AddAdmin(
+        address indexed _account
+    );
 }
+

@@ -198,6 +198,9 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
     function whitelist(address _account) external onlyManager {
         require(!whitelisted[_account], "Whitelisted");
         whitelisted[_account] = true;
+        emit WhiteList(
+            _account
+        );
     }
 
     /**
@@ -205,6 +208,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
      */
     function removeFromWhitelist(address _account) external onlyManager {
         delete whitelisted[_account];
+        emit RemoveFromWhiteList(_account);
     }
 
     /**
@@ -214,6 +218,7 @@ contract SHProduct is StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable
      */
     function addAdmin(address _account) external onlyManager {
         admin = _account;
+        emit AddAdmin(_account);
     }
 
     /**
