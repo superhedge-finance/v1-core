@@ -42,8 +42,8 @@ describe("SHProduct", function () {
             strikePrice4: 0,
             tr1: 10810,
             tr2: 10040,
-            issuanceDate: 1732696655,
-            maturityDate: 1735288655,
+            issuanceDate: 1732758775,
+            maturityDate: 1735350775,
             apy: "5%",
             underlyingSpotRef: 1,
             optionMinOrderSize: 1,
@@ -198,7 +198,7 @@ describe("SHProduct", function () {
         });
 
         it("can not update coupon when status is not Issuance", async function () {
-            await expect(shProduct.updateCoupon(20)).to.be.revertedWith("Neither mature nor locked");
+            await expect(shProduct.updateCoupon(20)).to.be.revertedWith("Neither Locked nor Mature");
         });
 
         it("can not update coupon when coupon is greater than 100", async function () {
@@ -247,7 +247,7 @@ describe("SHProduct", function () {
         it("can deposit with fundAccept status", async function () {
             await shProduct.fundAccept();
             await mockUSDC.approve(productAddress,10000);
-            await expect(shProduct.deposit(10000,false)).to.emit(shProduct, "Deposit");
+            await expect(shProduct.deposit(1000,false)).to.emit(shProduct, "Deposit");
         });
 
         it("can deposit without fundAccept status", async function () {
@@ -314,7 +314,7 @@ describe("SHProduct", function () {
             const userList = [signer.address];
             const amountList = [100000];
             await shProduct.coupon(userList, amountList);
-            await expect(shProduct.withdrawCoupon()).to.be.revertedWith("Balance");
+            await expect(shProduct.withdrawCoupon()).to.be.revertedWith("Insufficient contract balance");
         });
 
 
@@ -333,7 +333,7 @@ describe("SHProduct", function () {
 
         it("can not withdrawOption when balance is 0", async function () {
             const shProductWithOtherSigner = shProduct.connect(otherSigner);
-            await expect(shProductWithOtherSigner.withdrawOption()).to.be.revertedWith("No OP");
+            await expect(shProductWithOtherSigner.withdrawOption()).to.be.revertedWith("No option payout available");
         });
 
         it("can not withdrawOption when balance is greater than totalBalance", async function () {
@@ -346,7 +346,7 @@ describe("SHProduct", function () {
             const userList = [signer.address];
             const amountList = [200000];
             await shProduct.addOptionProfitList(userList, amountList);
-            await expect(shProduct.withdrawOption()).to.be.revertedWith("Balance");
+            await expect(shProduct.withdrawOption()).to.be.revertedWith("Insufficient contract balance");
         });
     });
 
