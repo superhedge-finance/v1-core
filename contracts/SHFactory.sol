@@ -17,9 +17,9 @@ contract SHFactory is ISHFactory, Ownable2StepUpgradeable {
    /// @notice Array of products' addresses
    address[] public products;
    /// @notice Mapping from product name to product address
-   mapping(string => address) public getProduct;
+   mapping(string productName => address productAddress) public getProduct;
    /// @notice Boolean check if an address is a product
-   mapping(address => bool) public isProduct;
+   mapping(address productAddress => bool isProduct) public isProduct;
    address public tokenFactory;
    /// @notice Event emitted when new product is created
    event ProductCreated(
