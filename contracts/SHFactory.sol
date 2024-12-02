@@ -33,7 +33,6 @@ contract SHFactory is ISHFactory, Ownable2StepUpgradeable {
     */
    function initialize(address _tokenFactory) external initializer {
         __Ownable2Step_init();
-        __Ownable_init();
        tokenFactory = _tokenFactory;
    }
 
@@ -92,6 +91,13 @@ contract SHFactory is ISHFactory, Ownable2StepUpgradeable {
        emit ProductCreated(productAddr, _name, _underlying, _maxCapacity);
    }
 
+   /**
+    * @notice Override renounceOwnership to disable the ability to renounce ownership
+    */
+   function renounceOwnership() public virtual override {
+       revert("Ownable: Can't renounce ownership");
+   }
+   
    /**
     * @notice returns the number of products
     */
