@@ -3,6 +3,9 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+// import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./interfaces/ISHFactory.sol";
 import "./interfaces/ISHTokenFactory.sol";
 import "./libraries/DataTypes.sol";
@@ -11,10 +14,8 @@ import "./SHProduct.sol";
 /**
 * @notice Factory contract to create new products
 */
-contract SHFactory is ISHFactory, Ownable2StepUpgradeable {
+contract SHFactory is ISHFactory, Ownable2StepUpgradeable, UUPSUpgradeable {
 
-   /// @notice Array of products' addresses
-   address[] public products;
    /// @notice Mapping from product name to product address
    mapping(string productName => address productAddress) public getProduct;
    /// @notice Boolean check if an address is a product
@@ -33,8 +34,15 @@ contract SHFactory is ISHFactory, Ownable2StepUpgradeable {
     */
    function initialize(address _tokenFactory) external initializer {
         __Ownable2Step_init();
+        __UUPSUpgradeable_init();
        tokenFactory = _tokenFactory;
    }
+
+   /**
+    * @dev Function that should revert when `msg.sender` is not authorized to upgrade the contract. Called by
+    * {upgradeTo} and {upgradeToAndCall}.
+    */
+   function _authorizeUpgrade(address) internal override onlyOwner {}
 
    /**
     * @notice Function to create new product(vault)
@@ -66,7 +74,7 @@ contract SHFactory is ISHFactory, Ownable2StepUpgradeable {
        SHProduct product = new SHProduct();
        address productAddr = address(product);
        
-       address _tokenAddress= ISHTokenFactory(tokenFactory).createToken("SHToken", "SHT",productAddr);
+       address _tokenAddress= ISHTokenFactory(tokenFactory).createToken("NoteToken", "NT",productAddr, IERC20MetadataUpgradeable(address(_currency)).decimals());
 
        address _currencyAddress = address(_currency);
 
@@ -86,22 +94,7 @@ contract SHFactory is ISHFactory, Ownable2StepUpgradeable {
 
        getProduct[_name] = productAddr;
        isProduct[productAddr] = true;
-       products.push(productAddr);
 
        emit ProductCreated(productAddr, _name, _underlying, _maxCapacity);
-   }
-
-   /**
-    * @notice Override renounceOwnership to disable the ability to renounce ownership
-    */
-   function renounceOwnership() public virtual override {
-       revert("Ownable: Can't renounce ownership");
-   }
-   
-   /**
-    * @notice returns the number of products
-    */
-   function numOfProducts() external view returns (uint256) {
-       return products.length;
    }
 }

@@ -6,7 +6,7 @@ library DataTypes {
     /// @dev This struct is used to store details about an issuance cycle.
     struct IssuanceCycle {
         /// @notice The coupon rate for the issuance cycle
-        uint8 coupon;
+        uint256 coupon;
         /// @notice The first strike price for the issuance cycle
         uint256 strikePrice1;
         /// @notice The second strike price for the issuance cycle

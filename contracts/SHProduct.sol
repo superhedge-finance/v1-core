@@ -11,6 +11,8 @@ import "./StructGen.sol";
 import "./interfaces/IERC20Token.sol";
 import "./libraries/DataTypes.sol";
 import "./libraries/EventFunctions.sol";
+import "./ParameterUpdater.sol";
+
 
 /**
  * @title SHProduct
@@ -18,6 +20,7 @@ import "./libraries/EventFunctions.sol";
  * @dev Inherits from StructGen, ReentrancyGuardUpgradeable, PausableUpgradeable, and EventFunctions
  */
 contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,EventFunctions {
+
     IPPrincipalToken public PT;
     IPYieldToken public YT;
     IPAllActionV3 public router;
@@ -52,6 +55,7 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
     uint256 public optionProfit;
     uint256 public totalOptionPosition;
     uint256 public totalNumberOfBlocks;
+    address public fundContract;
 
     DataTypes.Status public status;
     DataTypes.IssuanceCycle public issuanceCycle;
@@ -64,6 +68,9 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
     bool public isDistributed;
 
     mapping(address => bool) public whitelisted;
+
+    ParameterUpdater public parameterUpdater;
+   
 
     /**
      * @notice Initializes the contract
@@ -80,13 +87,13 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
      * @param _currencyAddress Currency address
      */
     function initialize(
-        string memory _name,
-        string memory _underlying,
+        string calldata _name,
+        string calldata _underlying,
         IERC20Upgradeable _currency,
         address _manager,
         address _exWallet,
         uint256 _maxCapacity,
-        DataTypes.IssuanceCycle memory _issuanceCycle,
+        DataTypes.IssuanceCycle calldata _issuanceCycle,
         address _router,
         address _market,
         address _tokenAddress,
@@ -105,11 +112,9 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
         currency = _currency;
         currencyAddress = _currencyAddress;
         shFactory = msg.sender;
-        require(_issuanceCycle.coupon <= 100 && _issuanceCycle.coupon >= 0, "Less than 0 or greater than 100");
-        require(_issuanceCycle.issuanceDate > block.timestamp, 
-            "ID bigger");
-        require(_issuanceCycle.maturityDate > _issuanceCycle.issuanceDate, 
-            "MT bigger");
+        require(_issuanceCycle.coupon <= 1000000 && _issuanceCycle.coupon >= 0, "Invalid coupon");
+        require(_issuanceCycle.issuanceDate > block.timestamp, "Invalid issuance date");
+        require(_issuanceCycle.maturityDate > _issuanceCycle.issuanceDate, "Invalid maturity date");
         
         issuanceCycle = _issuanceCycle;
 
@@ -178,8 +183,7 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
      * @notice Modifier for functions restricted to products in Locked or Mature status
      */
     modifier LockedOrMature() {
-        require(status == DataTypes.Status.Locked || status == DataTypes.Status.Mature, 
-            "Neither Locked nor Mature");
+        require(status == DataTypes.Status.Locked || status == DataTypes.Status.Mature, "Neither Locked nor Mature");
         _;
     }
 
@@ -187,8 +191,7 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
      * @notice Modifier for functions restricted to products in Locked, Mature, or Accepted status
      */
     modifier AcceptedOrLockedOrMature() {
-        require(status == DataTypes.Status.Locked || status == DataTypes.Status.Mature || status == DataTypes.Status.Accepted, 
-            "Neither Accepted nor Locked nor Mature");
+        require(status == DataTypes.Status.Locked || status == DataTypes.Status.Mature || status == DataTypes.Status.Accepted, "Neither Accepted nor Locked nor Mature");
         _;
     }
 
@@ -198,9 +201,7 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
     function whitelist(address _account) external onlyManager {
         require(!whitelisted[_account], "Account is already whitelisted");
         whitelisted[_account] = true;
-        emit WhiteList(
-            _account
-        );
+        emit WhiteList(_account);
     }
 
     /**
@@ -227,8 +228,7 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
      * @dev Product must be in Pending or Mature status
      */
     function fundAccept() external whenNotPaused onlyWhitelisted {
-        require(status == DataTypes.Status.Pending || status == DataTypes.Status.Mature, 
-            "Neither mature nor pending status");
+        require(status == DataTypes.Status.Pending || status == DataTypes.Status.Mature, "Invalid status");
         status = DataTypes.Status.Accepted;
         emit FundAccept();
     }
@@ -239,7 +239,7 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
      * @param _amountList Array of amounts to distribute to each user
      * @dev Only callable by whitelisted addresses when contract is not paused and in Accepted status
      */
-    function addOptionProfitList(address[] memory _userList, uint256[] memory _amountList) external whenNotPaused onlyAccepted onlyWhitelisted {
+    function addOptionProfitList(address[] memory _userList, uint256[] memory _amountList) external whenNotPaused onlyMature onlyWhitelisted {
         uint256 _optionProfit = optionProfit;
         uint256 length = _userList.length;
         if (_optionProfit > 0) {
@@ -248,10 +248,7 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
             }
             optionProfit = 0;
         }
-        emit AddOptionProfitList(
-            _userList,
-            _amountList
-        );
+        emit AddOptionProfitList(_userList, _amountList);
     }
 
     /**
@@ -305,9 +302,9 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
      * @dev Coupon rate must be between 0 and 100
      */
     function updateCoupon(
-        uint8 _newCoupon
+        uint256 _newCoupon
     ) external LockedOrMature onlyManager {
-        require(_newCoupon <= 100 && _newCoupon >= 0, "Less than 0 or greater than 100");
+        require(_newCoupon <= 1000000 && _newCoupon >= 0, "Less than 0 or greater than 100");
         issuanceCycle.coupon = _newCoupon;
 
         emit UpdateCoupon(_newCoupon);
@@ -321,113 +318,31 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
      * @param _market New market address
      * @dev Only callable by manager when product is in Accepted status
      */
-    function updateParameters(string memory _name, DataTypes.IssuanceCycle memory _issuanceCycle,address _router,address _market) external onlyAccepted onlyManager {
-
-        require(_issuanceCycle.issuanceDate > block.timestamp, "ID bigger");
-        require(_issuanceCycle.maturityDate > _issuanceCycle.issuanceDate, "MT bigger");
-        require(_issuanceCycle.tr1 <= 200 && _issuanceCycle.tr1 >= 100, "Less than 100 or greater than 200");
-        require(_issuanceCycle.tr2 <= 200 && _issuanceCycle.tr2 >= 100, "Less than 100 or greater than 200");
-        require(bytes(_issuanceCycle.apy).length >= 2 && bytes(_issuanceCycle.apy).length <= 12, "Error apy length");
-
-        require(_issuanceCycle.strikePrice1 <= 1000000 && _issuanceCycle.strikePrice1 >= 0, "Less than 1000000 or greater than 0");
-        require(_issuanceCycle.strikePrice2 <= 1000000 && _issuanceCycle.strikePrice2 >= 0, "Less than 1000000 or greater than 0");
-        require(_issuanceCycle.strikePrice3 <= 1000000 && _issuanceCycle.strikePrice3 >= 0, "Less than 1000000 or greater than 0");
-        require(_issuanceCycle.strikePrice4 <= 1000000 && _issuanceCycle.strikePrice4 >= 0, "Less than 1000000 or greater than 0");
-
-        name = _name;
-        router = IPAllActionV3(_router);
-        market = IPMarket(_market);
-        (,PT,YT) = IPMarket(market).readTokens();
-
-        issuanceCycle.tr1 = _issuanceCycle.tr1;
-        issuanceCycle.tr2 = _issuanceCycle.tr2;
-        issuanceCycle.strikePrice1 = _issuanceCycle.strikePrice1;
-        issuanceCycle.strikePrice2 = _issuanceCycle.strikePrice2;
-        issuanceCycle.strikePrice3 = _issuanceCycle.strikePrice3;
-        issuanceCycle.strikePrice4 = _issuanceCycle.strikePrice4;
-        issuanceCycle.apy = _issuanceCycle.apy;
-        issuanceCycle.subAccountId = _issuanceCycle.subAccountId;
-        issuanceCycle.issuanceDate = _issuanceCycle.issuanceDate;
-        issuanceCycle.maturityDate = _issuanceCycle.maturityDate;
-
-        emit UpdateParameters(
-            _name,
-            _router, 
-            _market
-        );
-    }
-
-    /**
-     * @notice Updates the product structure parameters
-     * @param _strikePrice1 First strike price
-     * @param _strikePrice2 Second strike price
-     * @param _strikePrice3 Third strike price
-     * @param _strikePrice4 Fourth strike price
-     * @param _tr1 First target rate
-     * @param _tr2 Second target rate
-     * @param _apy APY string
-     * @param _underlyingSpotRef Underlying spot reference price
-     * @dev Only callable by manager when product is in Locked status
-     */
-    function updateStructure(uint256 _strikePrice1, uint256 _strikePrice2, uint256 _strikePrice3, uint256 _strikePrice4,
-    uint256 _tr1, uint256 _tr2, string memory _apy, uint8 _underlyingSpotRef) external onlyLocked onlyManager {
-
-        require(_underlyingSpotRef <= 1000000 && _underlyingSpotRef >= 0, "Less than 1000000 or greater than 0");
-        require(_tr1 <= 200 && _tr1 >= 100, "Less than 100 or greater than 200");
-        require(_tr2 <= 200 && _tr2 >= 100, "Less than 100 or greater than 200");
-        require(bytes(_apy).length >= 2 && bytes(_apy).length <= 12, "Error apy length");
-        require(_strikePrice1 <= 1000000 && _strikePrice1 >= 0, "Less than 1000000 or greater than 0");
-        require(_strikePrice2 <= 1000000 && _strikePrice2 >= 0, "Less than 1000000 or greater than 0");
-        require(_strikePrice3 <= 1000000 && _strikePrice3 >= 0, "Less than 1000000 or greater than 0");
-        require(_strikePrice4 <= 1000000 && _strikePrice4 >= 0, "Less than 1000000 or greater than 0");
-
-        issuanceCycle.strikePrice1 = _strikePrice1;
-        issuanceCycle.strikePrice2 = _strikePrice2;
-        issuanceCycle.strikePrice3 = _strikePrice3;
-        issuanceCycle.strikePrice4 = _strikePrice4;
-        issuanceCycle.tr1 = _tr1;
-        issuanceCycle.tr2 = _tr2;
-        issuanceCycle.apy = _apy;
-        issuanceCycle.underlyingSpotRef = _underlyingSpotRef;
-        
-        emit UpdateStructure(
-            _strikePrice1,
-            _strikePrice2,
-            _strikePrice3,
-            _strikePrice4,
-            _tr1,
-            _tr2,
-            _apy,
-            _underlyingSpotRef
-        );
+    function updateParameters(string calldata _name, DataTypes.IssuanceCycle calldata _issuanceCycle,address _router,address _market) external AcceptedOrLockedOrMature onlyManager {
+        parameterUpdater.updateParameters(address(this), _name, _issuanceCycle, _router, _market);
     }
 
     /**
      * @notice Deposits currency into the structured product and mints ERC20 tokens
      * @param _amount Amount of currency to deposit
-     * @param _type If true, includes user's accumulated profit in deposit
      * @dev Only callable when contract is not paused and in Accepted status
      * @dev Amount must be greater than 0 and not exceed remaining capacity
      */
-    function deposit(uint256 _amount, bool _type) external nonReentrant whenNotPaused onlyAccepted {
+    function deposit(uint256 _amount) external nonReentrant whenNotPaused onlyAccepted {
         require(_amount > 0, "Greater zero");
         uint256 decimals = _currencyDecimals();
         require(decimals > 0, "Decimals");
         uint256 amountToDeposit = _amount;
-        if (_type) {
-            amountToDeposit += userInfo[msg.sender].coupon + userInfo[msg.sender].optionPayout;
-        }
+        
         require((maxCapacity * 10 ** decimals) >= (currentCapacity + amountToDeposit), "Product is full");
         currentCapacity += amountToDeposit;
-        if (_type) {
-            userInfo[msg.sender].coupon = 0;
-            userInfo[msg.sender].optionPayout = 0;
-        }
+        
         currency.safeTransferFrom(msg.sender, address(this), _amount);
         IERC20Token(tokenAddress).mint(msg.sender,_amount);
 
         emit Deposit(msg.sender, _amount);
     }
+
 
     /**
      * @notice Withdraws principal by burning product tokens
@@ -484,14 +399,14 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
      * @dev Only callable by manager when product is in Locked status
      * @dev Remaining percentage (100 - _yieldRate) goes to options wallet
      */
-    function distributeFunds(uint8 _yieldRate) external onlyManager onlyLocked {
+    function distributeFunds(uint32 _yieldRate) external onlyManager onlyLocked {
         require(!isDistributed, "Already distributed");
-        require(_yieldRate <= 100, "Less than 100");
+        require(_yieldRate <= 100_000_000, "Less than 100");
         isDistributed = true;
-        uint8 optionRate = 100 - _yieldRate;
+        uint32 optionRate = 100_000_000 - _yieldRate;
         uint256 optionAmount;
         if (optionRate > 0) {
-            optionAmount = currentCapacity * optionRate / 100;
+            optionAmount = currentCapacity * optionRate / 100_000_000;
             currency.transfer(exWallet, optionAmount);
         }
 
@@ -536,20 +451,17 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
         uint256 exactPtIn = 0;
         uint256 decimals = _currencyDecimals();
         require(decimals > 0, "Decimals");
-        uint256 earlyWithdrawUser = ((_noOfBlock * issuanceCycle.underlyingSpotRef) *(issuanceCycle.optionMinOrderSize * 10**(decimals)))/10;
+        uint256 earlyWithdrawUser = ((_noOfBlock * issuanceCycle.underlyingSpotRef) *(issuanceCycle.optionMinOrderSize * 10**(decimals)))/10; 
         uint256 currentToken = IERC20(tokenAddress).balanceOf(msg.sender);
-
-        uint256 withdrawBlockSize = (issuanceCycle.underlyingSpotRef * 10**(decimals) * issuanceCycle.optionMinOrderSize)/10;
+        uint256 withdrawBlockSize = (issuanceCycle.underlyingSpotRef * 10**(decimals) * issuanceCycle.optionMinOrderSize)/10; 
         uint256 totalBlock = currentToken / withdrawBlockSize;
+        require(totalBlock >= _noOfBlock, "Not enough blocks");
 
-        if (totalBlock >= _noOfBlock){
-            exactPtIn  = (earlyWithdrawUser * netPtOut / currentCapacity);  
-        }
-
-        netPtOut-=exactPtIn; 
-        currentCapacity -= earlyWithdrawUser;
+        exactPtIn  = (earlyWithdrawUser * netPtOut / currentCapacity);        
         totalNumberOfBlocks+=_noOfBlock;
+
         IERC20Token(tokenAddress).burn(msg.sender,earlyWithdrawUser);
+
         IERC20(PT).approve(address(router), exactPtIn);
         (uint256 netTokenOut,,) = router.swapExactPtForToken(
         address(this), address(market), exactPtIn, createTokenOutputStruct(currencyAddress, 0), emptyLimit);
@@ -663,5 +575,9 @@ contract SHProduct is StructGen,ReentrancyGuardUpgradeable,PausableUpgradeable,E
      */
     function unpause() external onlyManager {
         _unpause();
+    }
+
+    function setParameterUpdater(address _parameterUpdater) external onlyManager {
+        parameterUpdater = ParameterUpdater(_parameterUpdater);
     }
 }

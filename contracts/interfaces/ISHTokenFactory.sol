@@ -11,6 +11,6 @@ interface ISHTokenFactory {
      * @param owner The address that will own the newly created token.
      * @return The address of the newly created token.
      */
-    function createToken(string memory name, string memory symbol, address owner) external returns (address);
+    function createToken(string memory name, string memory symbol, address owner, uint8 decimals) external returns (address);
 
 }

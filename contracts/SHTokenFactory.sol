@@ -17,8 +17,8 @@ contract SHTokenFactory is ISHTokenFactory {
     /// @param symbol The symbol of the token
     /// @param _owner The address that will own the new token
     /// @return The address of the newly created token
-    function createToken(string memory name, string memory symbol, address _owner) external returns (address) {
-        SHToken newToken = new SHToken(name, symbol, _owner);
+    function createToken(string memory name, string memory symbol, address _owner, uint8 decimals) external returns (address) {
+        SHToken newToken = new SHToken(name, symbol, _owner, decimals);
         emit TokenCreated(address(newToken), name, symbol, _owner);
         return address(newToken);
     }

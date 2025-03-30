@@ -66,7 +66,7 @@ contract EventFunctions {
         address indexed qredoDeribit,
         uint256 optionRate,
         address indexed pendleRouter,
-        uint8 yieldRate
+        uint32 yieldRate
     );
     
     /// @notice Emitted when yield is redeemed.
