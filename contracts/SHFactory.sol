@@ -1,27 +1,25 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "./interfaces/ISHProduct.sol";
+import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+// import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./interfaces/ISHFactory.sol";
 import "./interfaces/ISHTokenFactory.sol";
 import "./libraries/DataTypes.sol";
 import "./SHProduct.sol";
 
-
-
 /**
 * @notice Factory contract to create new products
 */
-contract SHFactory is ISHFactory, OwnableUpgradeable {
+contract SHFactory is ISHFactory, Ownable2StepUpgradeable, UUPSUpgradeable {
 
-   /// @notice Array of products' addresses
-   address[] public products;
    /// @notice Mapping from product name to product address
-   mapping(string => address) public getProduct;
+   mapping(string productName => address productAddress) public getProduct;
    /// @notice Boolean check if an address is a product
-   mapping(address => bool) public isProduct;
+   mapping(address productAddress => bool isProduct) public isProduct;
    address public tokenFactory;
    /// @notice Event emitted when new product is created
    event ProductCreated(
@@ -31,18 +29,20 @@ contract SHFactory is ISHFactory, OwnableUpgradeable {
        uint256 maxCapacity
    );
 
-   event ProductUpdated(
-       address indexed product,
-       string name
-   );
-
    /**
     * @dev Initializes the contract setting the deployer as the initial owner.
     */
-   function initialize(address _tokenFactory) public initializer {
-       __Ownable_init();
+   function initialize(address _tokenFactory) external initializer {
+        __Ownable2Step_init();
+        __UUPSUpgradeable_init();
        tokenFactory = _tokenFactory;
    }
+
+   /**
+    * @dev Function that should revert when `msg.sender` is not authorized to upgrade the contract. Called by
+    * {upgradeTo} and {upgradeToAndCall}.
+    */
+   function _authorizeUpgrade(address) internal override onlyOwner {}
 
    /**
     * @notice Function to create new product(vault)
@@ -74,7 +74,7 @@ contract SHFactory is ISHFactory, OwnableUpgradeable {
        SHProduct product = new SHProduct();
        address productAddr = address(product);
        
-       address _tokenAddress= ISHTokenFactory(tokenFactory).createToken("SHToken", "SHT",productAddr);
+       address _tokenAddress= ISHTokenFactory(tokenFactory).createToken("NoteToken", "NT",productAddr, IERC20MetadataUpgradeable(address(_currency)).decimals());
 
        address _currencyAddress = address(_currency);
 
@@ -94,29 +94,7 @@ contract SHFactory is ISHFactory, OwnableUpgradeable {
 
        getProduct[_name] = productAddr;
        isProduct[productAddr] = true;
-       products.push(productAddr);
 
        emit ProductCreated(productAddr, _name, _underlying, _maxCapacity);
-   }
-
-   /**
-    * @notice set new product name
-    */
-   function setProductName(string memory _name, address _product) external onlyOwner {
-       require(getProduct[_name] == address(0), "Product already exists");
-       require(isProduct[_product], "Invalid product address");
-       string memory _oldName = ISHProduct(_product).name();
-       delete getProduct[_oldName];
-       getProduct[_name] = _product;
-       ISHProduct(_product).updateName(_name);
-
-       emit ProductUpdated(_product, _name);
-   }
-
-   /**
-    * @notice returns the number of products
-    */
-   function numOfProducts() external view returns (uint256) {
-       return products.length;
    }
 }
