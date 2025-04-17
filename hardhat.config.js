@@ -1,20 +1,31 @@
 require("@nomicfoundation/hardhat-toolbox");
-// require("@nomiclabs/hardhat-etherscan");
-const apiKey = ""
-const privateKey = ""
+
+const { PRIVATE_KEY } = require("./secret.json");
+
+const { ETHEREUM_RPC_URL } = require("./secret.json");
+const { ARBITRUM_RPC_URL } = require("./secret.json");
+const { BASE_RPC_URL } = require("./secret.json");
+
+const { API_KEY_ETHERSCAN } = require("./secret.json");
+const { API_KEY_ARBISCAN } = require("./secret.json");
+const { API_KEY_BASESCAN } = require("./secret.json");
+
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-  defaultNetwork: "arb",
   networks: {
+    ethereum:{
+      url: ETHEREUM_RPC_URL,
+      accounts: [PRIVATE_KEY]
+    },
     arb:{
-      // url: "https://rpc.ankr.com/arbitrum",
-      // url: "https://endpoints.omniatech.io/v1/arbitrum/one/public",
-      url:'https://arbitrum-mainnet.infura.io/v3/de2c1ced559c453e86d2cf05b4c5e35b',
-      // chainId: 42161,
-      // gasPrice: 200000,
-      accounts: [privateKey]
+      url: ARBITRUM_RPC_URL,
+      accounts: [PRIVATE_KEY]
+    },
+    base:{
+      url: BASE_RPC_URL,
+      accounts: [PRIVATE_KEY]
     },
   },
   solidity: {
@@ -23,7 +34,8 @@ module.exports = {
       optimizer: {
         enabled: true,
         runs: 200 
-      }
+      },
+      viaIR: true
     }
   },
   paths: {
@@ -36,7 +48,10 @@ module.exports = {
     timeout: 20000
   },
   etherscan: {
-    apiKey: apiKey
-
+    apiKey: {
+      eth: API_KEY_ETHERSCAN,
+      arb: API_KEY_ARBISCAN,
+      base: API_KEY_BASESCAN
+    }
   }
 };
